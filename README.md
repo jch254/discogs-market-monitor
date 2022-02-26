@@ -1,6 +1,6 @@
 # [Discogs Market Monitor](https://603.nz)
 
-![Build Status](TODO)
+<!-- ![Build Status](TODO) -->
 
 TBC
 
