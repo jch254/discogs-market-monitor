@@ -1,6 +1,5 @@
 import { Context, ScheduledEvent } from "aws-lambda";
 import { Client as DiscogsClient } from "disconnect";
-import { DiscogsPagination, DiscogsWantlistItem } from "./interfaces";
 
 const discogsClient = new DiscogsClient({
   consumerKey: process.env.DISCOGS_CONSUMER_KEY,
@@ -15,7 +14,7 @@ export async function handler(event: ScheduledEvent, context: Context) {
 
   const wantlist = await discogsClient.user().wantlist();
 
-  let wantlistReleases: DiscogsWantlistItem[] = [];
+  let wantlistReleases: WantlistTypes.Want[] = [];
   let totalPages = undefined;
   let currentPage = 1;
 
@@ -23,7 +22,7 @@ export async function handler(event: ScheduledEvent, context: Context) {
     const {
       pagination,
       wants,
-    }: { pagination: DiscogsPagination; wants: DiscogsWantlistItem[] } =
+    }: WantlistTypes.GetWantlistResponse =
       await wantlist.getReleases(process.env.DISCOGS_USERNAME, {
         page: currentPage,
         per_page: 100,
