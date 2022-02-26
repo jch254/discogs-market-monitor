@@ -31,6 +31,30 @@ Script will execute locally
 
 TBC
 
-### Deployment/Infrastructure
+## Deployment/Infrastructure
 
 Refer to the [/infrastructure](./infrastructure) directory.
+
+## TODO
+
+* Add deets/update env vars in README
+* Fix rate limiting Discogs API error
+
+  ```
+  {
+      "errorMessage": "Unknown error.",
+      "errorType": "DiscogsError",
+      "stackTrace": [
+          "DiscogsError: Unknown error.",
+          "    at IncomingMessage.passData (/Users/jch254/Dev/jch254/proj/discogs-market-monitor/node_modules/disconnect/lib/client.js:212:23)",
+          "    at IncomingMessage.emit (node:events:532:35)",
+          "    at IncomingMessage.emit (node:domain:475:12)",
+          "    at endReadableNT (node:internal/streams/readable:1346:12)",
+          "    at processTicksAndRejections (node:internal/process/task_queues:83:21)"
+      ]
+  }
+  ```
+
+* Format digest email instead of dumping JSON
+* Deploy
+* Fix OOM error?
