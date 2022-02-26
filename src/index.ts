@@ -6,7 +6,7 @@ import { sleep } from "./utils";
 const discogsClient = new DiscogsClient({
   consumerKey: process.env.DISCOGS_CONSUMER_KEY,
   consumerSecret: process.env.DISCOGS_CONSUMER_SECRET,
-  userToken: process.env.DISCOGS_USER_TOKEN,
+  userToken: process.env.DISCOGS_USER_TOKEN || '',
 });
 
 const parser = new Parser();
@@ -57,7 +57,7 @@ const getUserWantlist = async (username?: string) => {
 
   while (!totalPages || currentPage <= totalPages) {
     const { pagination, wants }: WantlistTypes.GetWantlistResponse =
-      await wantlist.getReleases(username, {
+      await wantlist.getReleases(username || '', {
         page: currentPage,
         per_page: 100,
       });
