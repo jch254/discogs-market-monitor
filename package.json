@@ -1,0 +1,37 @@
+{
+  "name": "discogs-market-monitor",
+  "version": "1.0.0",
+  "description": "Alert when new Discogs marketplace listings in your areas",
+  "main": "src/index.ts",
+  "scripts": {
+    "lint": "tslint --type-check --project tsconfig.json || exit 0",
+    "dev": "serverless invoke local --function handler",
+    "deploy": "cross-env NODE_ENV=production SLS_DEBUG=true serverless deploy",
+    "delete-domain": "cross-env NODE_ENV=production SLS_DEBUG=true serverless delete_domain",
+    "package": "cross-env NODE_ENV=production SLS_DEBUG=true serverless package"
+  },
+  "author": "Jordan Hornblow <jordan@jch254.com>",
+  "license": "MIT",
+  "dependencies": {
+    "disconnect": "^1.2.2"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.92",
+    "@types/node": "^17.0.21",
+    "@types/webpack": "^5.28.0",
+    "@types/webpack-node-externals": "^2.5.3",
+    "cross-env": "^7.0.3",
+    "serverless": "^3.4.0",
+    "serverless-offline": "^8.5.0",
+    "serverless-webpack": "^5.6.1",
+    "source-map-loader": "^3.0.1",
+    "ts-loader": "^9.2.6",
+    "tslint": "^5.20.1",
+    "tslint-config-airbnb": "^5.11.2",
+    "tslint-loader": "^3.5.4",
+    "tsutils": "^3.21.0",
+    "typescript": "^4.5.5",
+    "webpack": "^5.69.1",
+    "webpack-node-externals": "^3.0.0"
+  }
+}

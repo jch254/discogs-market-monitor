@@ -1,0 +1,34 @@
+# All commands below are run from root directory of repository by CodeBuild
+version: 0.2
+
+env:
+  variables:
+    TF_VAR_region: "ap-southeast-2"
+    TF_VAR_name: "discogs-market-monitor"
+    TF_VAR_kms_key_arns: '["arn:aws:kms:ap-southeast-2:982898479788:key/0ec9686b-13a1-40fc-8256-86e8d3503e9c"]'
+    TF_VAR_ssm_parameter_arns: '["arn:aws:ssm:ap-southeast-2:982898479788:parameter/shared/*"]'
+    TF_VAR_build_docker_image: "jch254/docker-node-terraform-aws"
+    TF_VAR_build_docker_tag: "12.x"
+    TF_VAR_buildspec: "buildspec.yml"
+    TF_VAR_source_location: "https://github.com/jch254/discogs-market-monitor.git"
+    TF_VAR_cache_bucket: "603-codebuild-cache/discogs-market-monitor"
+    TF_VAR_build_compute_type: "BUILD_GENERAL1_MEDIUM"
+    REMOTE_STATE_BUCKET: "603-terraform-remote-state"
+
+phases:
+  install:
+    commands:
+      # Workaround until CodeBuild/CodePipeline retains file permissions
+      - find ./infrastructure -name "*.bash" -exec chmod +x {} \;
+      - ./infrastructure/install.bash
+
+  build:
+    commands:
+      - ./infrastructure/deploy-infrastructure.bash
+      - ./infrastructure/deploy-serverless.bash
+
+cache:
+   paths:
+     - 'infrastructure/.terraform/modules/**/*'
+     - 'infrastructure/.terraform/plugins/**/*'
+     - '/usr/local/share/.cache/yarn/v1/**/*'

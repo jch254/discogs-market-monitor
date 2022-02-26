@@ -1,0 +1,30 @@
+service: aws-node-scheduled-cron
+
+frameworkVersion: '2 || 3'
+
+plugins:
+  - serverless-webpack
+
+package:
+  individually: true
+
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.ts
+    packager: 'yarn'
+    includeModules:
+      forceExclude:
+        - aws-sdk
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: prod
+  region: ap-southeast-2
+
+functions:
+  handler:
+    handler: src/index.handler
+    events:
+      # Invoke Lambda function every 10 minute
+      - schedule: rate(10 minutes)
