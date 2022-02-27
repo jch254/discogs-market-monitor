@@ -2,23 +2,33 @@ import { Context, ScheduledEvent } from "aws-lambda";
 import { Client as DiscogsClient } from "disconnect";
 import { uniq, upperFirst } from "lodash";
 import * as Parser from "rss-parser";
-import * as pThrottle from "p-throttle";
 import * as sgMail from "@sendgrid/mail";
 import { DiscogsUserWantlistMarketplaceItem } from "./interfaces";
+import { sleep } from "./utils";
 
-const discogsClient = new DiscogsClient('MarketMonitor/1.0', {
-  consumerKey: process.env.DISCOGS_CONSUMER_KEY,
-  consumerSecret: process.env.DISCOGS_CONSUMER_SECRET,
-  userToken: process.env.DISCOGS_USER_TOKEN || "",
-});
+const USER_AGENT = "MarketMonitor/1.0";
+
+let discogsClient: DiscogsClient;
+
+if (process.env.DISCOGS_USER_TOKEN) {
+  discogsClient = new DiscogsClient(USER_AGENT, {
+    userToken: process.env.DISCOGS_USER_TOKEN,
+  });
+} else if (
+  process.env.DISCOGS_CONSUMER_KEY &&
+  process.env.DISCOGS_CONSUMER_SECRET
+) {
+  discogsClient = new DiscogsClient(USER_AGENT, {
+    consumerKey: process.env.DISCOGS_CONSUMER_KEY,
+    consumerSecret: process.env.DISCOGS_CONSUMER_SECRET,
+  });
+} else {
+  discogsClient = new DiscogsClient(USER_AGENT);
+}
 
 const parser = new Parser();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
-
-const DISCOGS_REQUESTS_PER_MIN = process.env.DISCOGS_RATE_LIMIT
-  ? parseInt(process.env.DISCOGS_RATE_LIMIT, 10)
-  : 45;  // 15 request buffer window
 
 export async function handler(_event: ScheduledEvent, _context: Context) {
   console.log("RUNNING DISCOGS WANTLIST MARKET MONITOR", {
@@ -29,11 +39,15 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
     marketplaceListingCap: process.env.MARKETPLACE_LISTING_CAP,
   });
 
-  const userWantlist = await getUserWantlist(process.env.DISCOGS_USERNAME);
+  const {
+    wantlistReleases: userWantlist,
+    requestCount: userWantlistRequestCount,
+  } = await getUserWantlist(process.env.DISCOGS_USERNAME);
 
   console.log("FETCHED USER WANTLIST FROM DISCOGS", {
     username: process.env.DISCOGS_USERNAME,
     itemCount: userWantlist.length,
+    requestCount: userWantlistRequestCount,
   });
 
   if (userWantlist.length === 0) {
@@ -65,6 +79,9 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
       console.log(item.title, item.marketplaceItems);
     });
   }
+
+  // Sleep for number of requests it took to fetch wantlist to reset rate limit
+  await sleep(userWantlistRequestCount * 1000);
 
   const listings = (
     await getMarketplaceListings(wantlistMarketplaceItems)
@@ -123,7 +140,20 @@ const getUserWantlist = async (username?: string) => {
     currentPage += 1;
   }
 
-  return wantlistReleases;
+  return { wantlistReleases, requestCount: totalPages };
+};
+
+const getMarketplaceListing = async (id: string, currentRequest: number) => {
+  const marketplace = discogsClient.marketplace();
+
+  const listing = await marketplace.getListing(parseInt(id, 10));
+
+  console.log("FETCHED DISCOGS MARKETPLACE LISTING", {
+    id,
+    currentRequest,
+  });
+
+  return listing;
 };
 
 const getMarketplaceListings = async (
@@ -141,23 +171,37 @@ const getMarketplaceListings = async (
     )
   );
 
-  // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
-  const getListing = pThrottle(
-    async (id: string) => {
-      const marketplace = discogsClient.marketplace();
-      const listing = await marketplace.getListing(parseInt(id, 10));
+  let currentRequest = 1;
+  const listings: UserTypes.Listing[] = [];
 
-      console.log("FETCHED DISCOGS MARKETPLACE LISTING", {
-        id,
-      });
+  for await (const id of marketplaceListingIds) {
+    // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
 
-      return listing;
-    },
-    DISCOGS_REQUESTS_PER_MIN,
-    70 * 1000 // 10 sec buffer window
-  );
+    try {
+      const listing = await getMarketplaceListing(id, currentRequest);
 
-  return await Promise.all(marketplaceListingIds.slice(0,45).map(getListing));
+      currentRequest += 1;
+      listings.push(listing);
+    } catch {
+      // TODO: Determine if rate limiting error
+      console.log(
+        "Hit Discogs rate limiting error. Sleeping for 61 seconds to back off.",
+        {
+          id,
+          currentRequest,
+        }
+      );
+
+      await sleep(61 * 1000);
+
+      const listing = await getMarketplaceListing(id, currentRequest);
+
+      currentRequest += 1;
+      listings.push(listing);
+    }
+  }
+
+  return listings;
 };
 
 const sendWantlistEmail = async (listings: UserTypes.Listing[]) => {

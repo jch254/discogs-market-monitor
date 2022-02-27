@@ -1616,10 +1616,9 @@ dir-glob@^3.0.1:
   dependencies:
     path-type "^4.0.0"
 
-disconnect@^1.2.2:
+"disconnect@git+https://github.com/jch254/disconnect.git":
   version "1.2.2"
-  resolved "https://registry.yarnpkg.com/disconnect/-/disconnect-1.2.2.tgz#449e43c70e2f8bff0f36a0a18826a406bfd8f82a"
-  integrity sha512-0QWtdUdijooW0hUa4V5CYm6eQcWThKBh+1pnFk3C8gJo7zQQz+AX6Hs41df/DMjUeD6SN7UBQzdFwpxZv+Vdbw==
+  resolved "git+https://github.com/jch254/disconnect.git#7bb541f2cc007a54dc2528aacc1225f9aa6a8522"
   dependencies:
     oauth-1.0a "2.x.x"
 
@@ -3428,11 +3427,6 @@ p-settle@^4.1.1:
   dependencies:
     p-limit "^2.2.2"
     p-reflect "^2.1.0"
-
-p-throttle@^3.0.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/p-throttle/-/p-throttle-3.1.0.tgz#dee34ce4e77d7cc2dfdc1fea0daedccc64147214"
-  integrity sha512-rLo81NXBihs3GJQhq89IXa0Egj/sbW1zW8/qnyadOwUhIUrZSUvyGdQ46ISRKELFBkVvmMJ4JUqWki4oAh30Qw==
 
 p-timeout@^3.1.0, p-timeout@^3.2.0:
   version "3.2.0"
