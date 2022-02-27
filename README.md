@@ -36,6 +36,7 @@ Refer to the [/infrastructure](./infrastructure) directory.
 
 ## TODO
 
-* Format digest email instead of dumping JSON
+* Format digest email
 * Deploy (ensure Lambda timeout is maximum due to rate limiting handling)
+* Improve rate limiting error handling - add exponential backoff
 * Add deets/update env vars in README

@@ -156,6 +156,14 @@ const getMarketplaceListing = async (id: string, currentRequest: number) => {
   return listing;
 };
 
+const snooze = async (index:number) => {
+  if (index !== 0 && index % 30 === 0) {
+    console.log("SLEEPING FOR 30 SECONDS AFTER FETCHING 30 ITEMS...");
+
+    await sleep(30 * 1000);
+  }
+}
+
 const getMarketplaceListings = async (
   wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[]
 ) => {
@@ -174,7 +182,7 @@ const getMarketplaceListings = async (
   let currentRequest = 1;
   const listings: UserTypes.Listing[] = [];
 
-  for await (const id of marketplaceListingIds) {
+  for await (const [index, id] of marketplaceListingIds.entries()) {
     // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
 
     try {
@@ -182,22 +190,26 @@ const getMarketplaceListings = async (
 
       currentRequest += 1;
       listings.push(listing);
+
+      await snooze(index)
     } catch {
       // TODO: Determine if rate limiting error
       console.log(
-        "Hit Discogs rate limiting error. Sleeping for 61 seconds to back off.",
+        "FUCK! HIT DISCOGS RATE LIMITING ERROR. SLEEPING FOR 5 SECONDS...",
         {
           id,
           currentRequest,
         }
       );
 
-      await sleep(61 * 1000);
+      await sleep(5 * 1000);
 
       const listing = await getMarketplaceListing(id, currentRequest);
 
       currentRequest += 1;
       listings.push(listing);
+
+      await snooze(index)
     }
   }
 
