@@ -50,6 +50,8 @@ declare namespace UserTypes {
   }
 
   interface ShippingPrice {
+    currency: string;
+    value: number;
   }
 
   interface Price {

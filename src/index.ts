@@ -3,7 +3,7 @@ import { Client as DiscogsClient } from "disconnect";
 import { uniq, upperFirst } from "lodash";
 import * as Parser from "rss-parser";
 import * as sgMail from "@sendgrid/mail";
-import { DiscogsUserWantlistMarketplaceItem } from "./interfaces";
+import { DiscogsUserWantlistMarketplaceItem, TransformedListing } from "./interfaces";
 import { sleep } from "./utils";
 
 const USER_AGENT = "MarketMonitor/1.0";
@@ -223,7 +223,7 @@ const sendWantlistEmail = async (listings: UserTypes.Listing[]) => {
     subject: `Discogs Wantlist Digest for ${
       process.env.DISCOGS_USERNAME
     } shipping from ${upperFirst(process.env.SHIPS_FROM)}`,
-    text: JSON.stringify(listings, undefined, 2),
+    text: JSON.stringify(listings.map(transformListing), undefined, 2),
   };
 
   try {
@@ -236,3 +236,21 @@ const sendWantlistEmail = async (listings: UserTypes.Listing[]) => {
     }
   }
 };
+
+const transformListing = (listing: UserTypes.Listing): TransformedListing => {
+  return {
+    artist: listing.release.artist,
+    title: listing.release.title,
+    price: `${listing.price.value} ${listing.price.currency}`,
+    shippingPrice: `${listing.shipping_price.value} ${listing.shipping_price.currency}`,
+    uri: listing.uri,
+    condition: listing.condition,
+    sleeveCondition: listing.sleeve_condition,
+    comments: listing.comments,
+    posted: listing.posted,
+    description: listing.release.description,
+    format: listing.release.format,
+    year: listing.release.year,
+    shipsFrom: listing.ships_from,
+  }
+}
