@@ -36,7 +36,6 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
     shipsFrom: process.env.SHIPS_FROM,
     destinationEmail: process.env.DESTINATION_EMAIL,
     senderEmail: process.env.SENDER_EMAIL,
-    marketplaceListingCap: process.env.MARKETPLACE_LISTING_CAP,
   });
 
   const {
