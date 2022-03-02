@@ -49,8 +49,7 @@ Refer to the [/infrastructure](./infrastructure) directory.
 
 ## TODO
 
-* Deploy (ensure Lambda timeout is maximum due to rate limiting handling)
-* Format digest email
+* Make digest email pretty (add images and links etc.)
 * Improve rate limiting error handling - add exponential backoff
 * Add better handling for other Discogs errors (e.g. 502 response):
 
