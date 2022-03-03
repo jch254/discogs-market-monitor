@@ -49,6 +49,7 @@ Refer to the [/infrastructure](./infrastructure) directory.
 
 ## TODO
 
+* Add optional traversal of all variations of release (based on wantlist list item format e.g. vinyl - all vinyl variation)
 * Make digest email pretty (add images and links etc.)
 * Improve rate limiting error handling - add exponential backoff
 * Add better handling for other Discogs errors (e.g. 502 response):
