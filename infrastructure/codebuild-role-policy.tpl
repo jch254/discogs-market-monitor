@@ -33,6 +33,7 @@
     {
       "Effect": "Allow",
       "Action": [
+        "ssm:GetParameter",
         "ssm:GetParameters"
       ],
       "Resource": ${ssm_parameter_arns}

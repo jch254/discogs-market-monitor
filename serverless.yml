@@ -34,8 +34,8 @@ functions:
       - schedule: rate(12 hours)
     environment:
       DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token}
-      SENDGRID_API_KEY: ${ssm:/discogs-market-monitor/discogs_user_token}
-      DISCOGS_USERNAME: ${ssm:/discogs-market-monitor/discogs_user_token}
-      SHIPS_FROM: ${ssm:/discogs-market-monitor/discogs_user_token}
-      DESTINATION_EMAIL: ${ssm:/discogs-market-monitor/discogs_user_token}
-      SENDER_EMAIL: ${ssm:/discogs-market-monitor/discogs_user_token}
+      SENDGRID_API_KEY: ${ssm:/discogs-market-monitor/sendgrid_api_key}
+      DISCOGS_USERNAME: ${ssm:/discogs-market-monitor/discogs_username}
+      SHIPS_FROM: ${ssm:/discogs-market-monitor/ships_from}
+      DESTINATION_EMAIL: ${ssm:/discogs-market-monitor/destination_email}
+      SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email}
