@@ -27,7 +27,7 @@ provider:
 functions:
   handler:
     handler: src/index.handler
-    memorySize: 512
+    memorySize: 256
     timeout: 900
     events:
       # Invoke Lambda function every 12 hours
