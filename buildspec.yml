@@ -5,7 +5,7 @@ env:
   variables:
     TF_VAR_region: "ap-southeast-2"
     TF_VAR_name: "discogs-market-monitor"
-    TF_VAR_kms_key_arns: '["arn:aws:kms:ap-southeast-2:982898479788:key/0ec9686b-13a1-40fc-8256-86e8d3503e9c", "aws/secretsmanager"]'
+    TF_VAR_kms_key_arns: '["arn:aws:kms:ap-southeast-2:982898479788:key/0ec9686b-13a1-40fc-8256-86e8d3503e9c", "arn:aws/secretsmanager"]'
     TF_VAR_ssm_parameter_arns: '["arn:aws:ssm:ap-southeast-2:982898479788:parameter/shared/*"]'
     TF_VAR_secrets_arns: '["arn:aws:secretsmanager:ap-southeast-2:982898479788:secret:prod/discogs-market-monitor/secrets-klvZTb"]'
     TF_VAR_build_docker_image: "jch254/docker-node-terraform-aws"
