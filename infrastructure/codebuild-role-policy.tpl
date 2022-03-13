@@ -18,6 +18,7 @@
         "apigateway:*",
         "cloudformation:*",
         "lambda:*",
+        "events:*",
         "ssm:DescribeParameters",
         "application-autoscaling:*"
       ]
