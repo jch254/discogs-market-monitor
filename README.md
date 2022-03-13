@@ -51,9 +51,10 @@ Refer to the [/infrastructure](./infrastructure) directory.
 
 ## TODO
 
-* Add optional traversal of all variations of release (based on wantlist list item format e.g. vinyl - all vinyl variation)
+* Find solution for exceeding Lambda timeout of 15min due to Discogs rate limiting (AWS Batch, switch to Azure functions..?)
 * Make digest email pretty (add images and links etc.)
 * Improve rate limiting error handling - add exponential backoff
+* Add optional traversal of all variations of release (based on wantlist list item format e.g. vinyl - all vinyl variation)
 * Add better handling for other Discogs errors (e.g. 502 response):
 
 ```
