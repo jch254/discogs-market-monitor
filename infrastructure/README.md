@@ -8,13 +8,12 @@ I've created Docker-powered build/deployment environments for [Serverless projec
 
 To deploy/manage the Serverless service you will need to create an IAM user with the required permissions and set credentials for this user - see [here](https://github.com/serverless/serverless/blob/master/docs/providers/aws/guide/credentials.md) for further info. After you have done this, run the commands below to deploy the service:
 
-**AUTH0_CLIENT_SECRET environment variable must be set before `yarn run deploy` command below.**
+**TODO**
 
-E.g. `AUTH0_CLIENT_SECRET=YOUR_SECRET yarn run deploy`
+E.g. `yarn run deploy`
 
-```
+```bash
 yarn install
-yarn run create-domain
 yarn run deploy
 ```
 
@@ -31,11 +30,12 @@ To deploy to AWS, you must:
    1. Run on an EC2 instance with an IAM Role.
    1. Run via CodeBuild or ECS Task with an IAM Role (see [buildspec-test.yml](../buildspec-test.yml) for workaround)
 
-#### Deploying infrastructure
+### Deploying infrastructure
 
 1. Update and export all environment variables specified in the appropriate buildspec declaration (check all phases) and bash scripts
 1. Initialise Terraform:
-```
+
+```bash
 terraform init \
   -backend-config 'bucket=YOUR_S3_BUCKET' \
   -backend-config 'key=YOUR_S3_KEY' \
@@ -43,15 +43,17 @@ terraform init \
   -get=true \
   -upgrade=true
 ```
+
 1. `terraform plan -out main.tfplan`
 1. `terraform apply main.tfplan`
 
-#### Updating infrastructure
+### Updating infrastructure
 
 1. Update and export all environment variables specified in the appropriate buildspec declaration (check all phases) and bash scripts
 1. Make necessary infrastructure code changes.
 1. Initialise Terraform:
-```
+
+```bash
 terraform init \
   -backend-config 'bucket=YOUR_S3_BUCKET' \
   -backend-config 'key=YOUR_S3_KEY' \
@@ -59,14 +61,16 @@ terraform init \
   -get=true \
   -upgrade=true
 ```
+
 1. `terraform plan -out main.tfplan`
 1. `terraform apply main.tfplan`
 
-#### Destroying infrastructure (use with care)
+### Destroying infrastructure (use with care)
 
 1. Update and export all environment variables specified in the appropriate buildspec declaration (check all phases) and bash scripts
 1. Initialise Terraform:
-```
+
+```bash
 terraform init \
   -backend-config 'bucket=YOUR_S3_BUCKET' \
   -backend-config 'key=YOUR_S3_KEY' \
@@ -74,4 +78,5 @@ terraform init \
   -get=true \
   -upgrade=true
 ```
+
 1. `terraform destroy`

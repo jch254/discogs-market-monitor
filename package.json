@@ -7,7 +7,6 @@
     "lint": "tslint --type-check --project tsconfig.json || exit 0",
     "dev": "serverless invoke local --function handler",
     "deploy": "cross-env NODE_ENV=production SLS_DEBUG=true serverless deploy",
-    "delete-domain": "cross-env NODE_ENV=production SLS_DEBUG=true serverless delete_domain",
     "package": "cross-env NODE_ENV=production SLS_DEBUG=true serverless package"
   },
   "author": "Jordan Hornblow <jordan@jch254.com>",
