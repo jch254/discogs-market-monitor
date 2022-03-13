@@ -19,7 +19,6 @@
         "cloudformation:*",
         "lambda:*",
         "ssm:DescribeParameters",
-        "ssm:GetParameter",
         "application-autoscaling:*"
       ]
     },
@@ -36,13 +35,6 @@
         "ssm:GetParameters"
       ],
       "Resource": ${ssm_parameter_arns}
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ssm:GetParameter"
-      ],
-      "Resource": ${secrets_arns}
     }
   ]
 }

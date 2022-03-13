@@ -17,7 +17,6 @@ custom:
     includeModules:
       forceExclude:
         - aws-sdk
-  secrets: ${ssm:/aws/reference/secretsmanager/prod/discogs-market-monitor/secrets-klvZTb}
 
 provider:
   name: aws
@@ -34,9 +33,9 @@ functions:
       # Invoke Lambda function every 12 hours
       - schedule: rate(12 hours)
     environment:
-      DISCOGS_USER_TOKEN: ${self:custom.secrets.DISCOGS_USER_TOKEN}
-      SENDGRID_API_KEY: ${self:custom.secrets.SENDGRID_API_KEY}
-      DISCOGS_USERNAME: ${self:custom.secrets.DISCOGS_USERNAME}
-      SHIPS_FROM: ${self:custom.secrets.SHIPS_FROM}
-      DESTINATION_EMAIL: ${self:custom.secrets.DESTINATION_EMAIL}
-      SENDER_EMAIL: ${self:custom.secrets.SENDER_EMAIL}
+      DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token}
+      SENDGRID_API_KEY: ${ssm:/discogs-market-monitor/discogs_user_token}
+      DISCOGS_USERNAME: ${ssm:/discogs-market-monitor/discogs_user_token}
+      SHIPS_FROM: ${ssm:/discogs-market-monitor/discogs_user_token}
+      DESTINATION_EMAIL: ${ssm:/discogs-market-monitor/discogs_user_token}
+      SENDER_EMAIL: ${ssm:/discogs-market-monitor/discogs_user_token}

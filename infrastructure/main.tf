@@ -34,7 +34,6 @@ data "template_file" "codebuild_policy" {
   vars = {
     kms_key_arns       = var.kms_key_arns
     ssm_parameter_arns = var.ssm_parameter_arns
-    secrets_arns = var.secrets_arns
   }
 }
 
