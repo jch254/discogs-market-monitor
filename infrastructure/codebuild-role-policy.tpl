@@ -35,6 +35,13 @@
         "ssm:GetParameters"
       ],
       "Resource": ${ssm_parameter_arns}
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter"
+      ],
+      "Resource": ${secrets_arn}
     }
   ]
 }

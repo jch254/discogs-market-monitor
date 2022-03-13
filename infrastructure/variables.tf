@@ -14,6 +14,10 @@ variable "ssm_parameter_arns" {
   description = "Array of SSM Parameter ARNs used to set secret build environment variables via SSM Parameter Store"
 }
 
+variable "secrets_arn" {
+  description = "ARN of Secrets Manager secret"
+}
+
 variable "build_docker_image" {
   description = "Docker image to use as build environment"
 }
