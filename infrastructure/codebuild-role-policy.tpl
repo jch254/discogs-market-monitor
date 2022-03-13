@@ -41,7 +41,7 @@
       "Action": [
         "ssm:GetParameter"
       ],
-      "Resource": ${secrets_arn}
+      "Resource": ${secrets_arns}
     }
   ]
 }
