@@ -24,13 +24,6 @@ provider:
   runtime: nodejs14.x
   stage: prod
   region: ap-southeast-2
-  environment:
-    DISCOGS_USER_TOKEN: ${self:custom.secrets.DISCOGS_USER_TOKEN}
-    SENDGRID_API_KEY: ${self:custom.secrets.SENDGRID_API_KEY}
-    DISCOGS_USERNAME: ${self:custom.secrets.DISCOGS_USERNAME}
-    SHIPS_FROM: ${self:custom.secrets.SHIPS_FROM}
-    DESTINATION_EMAIL: ${self:custom.secrets.DESTINATION_EMAIL}
-    SENDER_EMAIL: ${self:custom.secrets.SENDER_EMAIL}
 
 functions:
   handler:
@@ -40,3 +33,10 @@ functions:
     events:
       # Invoke Lambda function every 12 hours
       - schedule: rate(12 hours)
+    environment:
+      DISCOGS_USER_TOKEN: ${self:custom.secrets.DISCOGS_USER_TOKEN}
+      SENDGRID_API_KEY: ${self:custom.secrets.SENDGRID_API_KEY}
+      DISCOGS_USERNAME: ${self:custom.secrets.DISCOGS_USERNAME}
+      SHIPS_FROM: ${self:custom.secrets.SHIPS_FROM}
+      DESTINATION_EMAIL: ${self:custom.secrets.DESTINATION_EMAIL}
+      SENDER_EMAIL: ${self:custom.secrets.SENDER_EMAIL}
