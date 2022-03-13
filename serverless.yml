@@ -17,7 +17,7 @@ custom:
     includeModules:
       forceExclude:
         - aws-sdk
-  secrets: ${ssm:/aws/reference/secretsmanager/prod/discogs-market-monitor/secrets}
+  secrets: ${ssm:/aws/reference/secretsmanager/prod/discogs-market-monitor/secrets-klvZTb}
 
 provider:
   name: aws
