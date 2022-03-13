@@ -19,6 +19,7 @@
         "cloudformation:*",
         "lambda:*",
         "ssm:DescribeParameters",
+        "ssm:GetParameter",
         "application-autoscaling:*"
       ]
     },

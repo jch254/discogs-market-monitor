@@ -23,7 +23,7 @@
     "@types/webpack": "^5.28.0",
     "@types/webpack-node-externals": "^2.5.3",
     "cross-env": "^7.0.3",
-    "serverless": "^3.4.0",
+    "serverless": "^3.7.4",
     "serverless-offline": "^8.5.0",
     "serverless-webpack": "^5.6.1",
     "source-map-loader": "^3.0.1",
