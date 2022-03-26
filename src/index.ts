@@ -110,20 +110,19 @@ export async function handler(event: MonitorEvent, _context: Context) {
       );
 
       return {
-        data: {
-          runRepeat: true,
-          currentIndex: requestError.currentIndex,
-          currentListings: requestError.currentListings.filter(
-            (listing) =>
-              listing.shipsFrom.toLowerCase() ===
-              process.env.SHIPS_FROM?.toLowerCase()
-          ),
-        },
+        runRepeat: true,
+        currentIndex: requestError.currentIndex,
+        currentListings: requestError.currentListings.filter(
+          (listing) =>
+            listing.shipsFrom.toLowerCase() ===
+            process.env.SHIPS_FROM?.toLowerCase()
+        ),
       };
     }
   }
 
-  const itemCount = listings.length + event.currentListings.length;
+  const currentListings = event.data.currentListings
+  const itemCount = listings.length + currentListings.length;
 
   console.log("FETCHED WANTLIST MARKETPLACE LISTINGS FROM DISCOGS", {
     username: process.env.DISCOGS_USERNAME,
@@ -133,7 +132,7 @@ export async function handler(event: MonitorEvent, _context: Context) {
 
   if (itemCount > 0) {
     await sendWantlistEmail([
-      ...event.currentListings,
+      ...currentListings,
       ...listings.map(transformListing),
     ]);
 
@@ -220,12 +219,14 @@ const getMarketplaceListings = async (
     )
   );
 
+  const { data: { runRepeat, currentIndex } } = event
+
   let currentRequest = 1;
   const listings: UserTypes.Listing[] = [];
 
-  if (event.runRepeat) {
+  if (runRepeat) {
     // Skip requests that has been made in previous runs
-    marketplaceListingIds = marketplaceListingIds.slice(event.currentIndex);
+    marketplaceListingIds = marketplaceListingIds.slice(currentIndex);
   }
 
   for await (const [index, id] of marketplaceListingIds.entries()) {
