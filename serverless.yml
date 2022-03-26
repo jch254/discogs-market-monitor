@@ -53,8 +53,7 @@ stepFunctions:
               Fn::GetAtt: [handler, Arn]
             Retry:
             - ErrorEquals:
-              - States.Timeout
-              - Lambda.Unknown
+              - RequestsExceededError
               IntervalSeconds: 1
               MaxAttempts: 100
               ResultPath: $.error
