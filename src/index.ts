@@ -34,7 +34,7 @@ const parser = new Parser();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-export async function handler(event: MonitorEvent, _context: Context) {
+export async function handler(event: MonitorEvent | null, _context: Context) {
   console.log(event);
 
   console.log("RUNNING DISCOGS WANTLIST MARKET MONITOR", {
@@ -121,7 +121,7 @@ export async function handler(event: MonitorEvent, _context: Context) {
     }
   }
 
-  const currentListings = event.data.currentListings
+  const currentListings = event != null ? event.data?.currentListings : [];
   const itemCount = listings.length + currentListings.length;
 
   console.log("FETCHED WANTLIST MARKETPLACE LISTINGS FROM DISCOGS", {
@@ -205,7 +205,7 @@ const snooze = async (index: number) => {
 
 const getMarketplaceListings = async (
   wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[],
-  event: MonitorEvent
+  event: MonitorEvent | null
 ) => {
   let marketplaceListingIds = uniq(
     wantlistMarketplaceItems.flatMap((item) =>
@@ -219,14 +219,18 @@ const getMarketplaceListings = async (
     )
   );
 
-  const { data: { runRepeat, currentIndex } } = event
-
   let currentRequest = 1;
   const listings: UserTypes.Listing[] = [];
 
-  if (runRepeat) {
-    // Skip requests that has been made in previous runs
-    marketplaceListingIds = marketplaceListingIds.slice(currentIndex);
+  if (event) {
+    const {
+      data: { runRepeat, currentIndex },
+    } = event;
+
+    if (runRepeat) {
+      // Skip requests that has been made in previous runs
+      marketplaceListingIds = marketplaceListingIds.slice(currentIndex);
+    }
   }
 
   for await (const [index, id] of marketplaceListingIds.entries()) {
