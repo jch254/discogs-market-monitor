@@ -58,3 +58,4 @@ stepFunctions:
               IntervalSeconds: 1
               MaxAttempts: 100
               ResultPath: $.error
+            End: true
