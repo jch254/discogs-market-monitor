@@ -1,44 +1,15 @@
-import { Context, ScheduledEvent } from "aws-lambda";
+import { Context } from "aws-lambda";
 import { Client as DiscogsClient } from "disconnect";
 import { uniq, upperFirst } from "lodash";
 import * as Parser from "rss-parser";
 import * as sgMail from "@sendgrid/mail";
 import {
   DiscogsUserWantlistMarketplaceItem,
+  MonitorEvent,
   TransformedListing,
 } from "./interfaces";
 import { sleep } from "./utils";
-
-const USER_AGENT = "MarketMonitor/1.0";
-const MAX_REQUESTS = 30;
-
-class RequestsExceededError extends Error {
-  private _currentRequest = 0;
-  private _currentListings: UserTypes.Listing[] = [];
-
-  constructor(message: string, currentRequest: number, currentListings: UserTypes.Listing[] ) {
-    super(message);
-    this.name = "RequestsExceededError";
-    this.currentRequest = currentRequest;
-    this._currentListings = currentListings;
-  }
-
-  get currentRequest() {
-    return this._currentRequest;
-  }
-
-  set currentRequest(value: number) {
-    this._currentRequest = value;
-  }
-
-  get currentListings() {
-    return this._currentListings;
-  }
-
-  set currentListings(value: UserTypes.Listing[]) {
-    this._currentListings = value;
-  }
-}
+import { MAX_REQUESTS, USER_AGENT } from "./constants";
 
 let discogsClient: DiscogsClient;
 
@@ -62,16 +33,8 @@ const parser = new Parser();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-type MonitorEvent = ScheduledEvent & {
-  currentRequest: number;
-  error: {
-    Error: RequestsExceededError;
-  };
-};
-
-export async function handler(_event: MonitorEvent, _context: Context) {
-  console.log(_event);
-  console.log(_context);
+export async function handler(event: MonitorEvent, _context: Context) {
+  console.log(event);
 
   console.log("RUNNING DISCOGS WANTLIST MARKET MONITOR", {
     username: process.env.DISCOGS_USERNAME,
@@ -128,17 +91,27 @@ export async function handler(_event: MonitorEvent, _context: Context) {
 
   try {
     listings = [
-      ...(await getMarketplaceListings(wantlistMarketplaceItems)).filter(
+      ...(await getMarketplaceListings(wantlistMarketplaceItems, event)).filter(
         (listing) =>
           listing.ships_from.toLowerCase() ===
           process.env.SHIPS_FROM?.toLowerCase()
       ),
     ];
-  } catch (e) {
-    if (e instanceof RequestsExceededError) {
+  } catch (error) {
+    const requestError: RequestsExceededError = error as RequestsExceededError;
+
+    if (requestError.name === "RequestsExceededError") {
+      console.log(
+        "REACHED MAX REQUESTS FOR LAMBDA RUN. TRIGGERING NEXT RUN...",
+        {
+          currentRequest: requestError.currentRequest,
+        }
+      );
+
       return {
-        currentIndex: e.currentRequest,
-        listings: e.currentListings
+        runRepeat: true,
+        currentRequest: requestError.currentRequest,
+        currentListings: requestError.currentListings,
       };
     }
   }
@@ -168,6 +141,8 @@ export async function handler(_event: MonitorEvent, _context: Context) {
       }
     );
   }
+
+  return;
 }
 
 const getUserWantlist = async (username?: string) => {
@@ -218,9 +193,10 @@ const snooze = async (index: number) => {
 };
 
 const getMarketplaceListings = async (
-  wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[]
+  wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[],
+  event: MonitorEvent
 ) => {
-  const marketplaceListingIds = uniq(
+  let marketplaceListingIds = uniq(
     wantlistMarketplaceItems.flatMap((item) =>
       item.marketplaceItems.map((marketplaceItem) => {
         if (marketplaceItem.link) {
@@ -233,14 +209,20 @@ const getMarketplaceListings = async (
   );
 
   let currentRequest = 1;
-  const listings: UserTypes.Listing[] = [];
+  let listings: UserTypes.Listing[] = [];
 
-  // TODO: skip past existing requests using data from event
+  if (event.runRepeat) {
+    // Skip requests that has been made in previous runs
+    currentRequest = event.currentRequest;
+    listings = [...event.currentListings, ...listings];
+    marketplaceListingIds = marketplaceListingIds.slice(event.currentRequest);
+  }
+
   for await (const [index, id] of marketplaceListingIds.entries()) {
     // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
 
     if (index >= MAX_REQUESTS) {
-      throw new RequestsExceededError("Exceeded Max requests", index, listings);
+      throw new RequestsExceededError("EXCEEDED MAX REQUESTS", index, listings);
     }
 
     try {

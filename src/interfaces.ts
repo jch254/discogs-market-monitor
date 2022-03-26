@@ -1,3 +1,4 @@
+import { ScheduledEvent } from "aws-lambda";
 import Parser from "rss-parser";
 
 export interface DiscogsUserWantlistMarketplaceItem {
@@ -22,3 +23,9 @@ export interface TransformedListing {
   title: string;
   year: number;
 }
+
+export type MonitorEvent = ScheduledEvent & {
+  runRepeat: boolean
+  currentRequest: number;
+  currentListings: UserTypes.Listing[];
+};
