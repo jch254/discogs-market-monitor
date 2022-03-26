@@ -30,9 +30,6 @@ functions:
     handler: src/index.handler
     memorySize: 256
     timeout: 900
-    events:
-      # Invoke Lambda function every 12 hours
-      - schedule: rate(12 hours)
     environment:
       DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token}
       SENDGRID_API_KEY: ${ssm:/discogs-market-monitor/sendgrid_api_key}
@@ -44,6 +41,10 @@ functions:
 stepFunctions:
   stateMachines:
     monitor:
+      events:
+        - schedule:
+            rate: rate(12 hours)
+            enabled: true
       definition:
         StartAt: MarketMonitor
         States:
