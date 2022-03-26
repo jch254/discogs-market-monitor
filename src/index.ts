@@ -7,7 +7,7 @@ import { DiscogsUserWantlistMarketplaceItem, TransformedListing } from "./interf
 import { sleep } from "./utils";
 
 const USER_AGENT = "MarketMonitor/1.0";
-const MAX_REQUESTS = 600
+const MAX_REQUESTS = 30
 
 class RequestsExceededError extends Error { 
   private _currentRequest = 0
