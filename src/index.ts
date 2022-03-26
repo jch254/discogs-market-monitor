@@ -10,6 +10,7 @@ import {
 } from "./interfaces";
 import { sleep } from "./utils";
 import { MAX_REQUESTS, USER_AGENT } from "./constants";
+import { RequestsExceededError } from "./RequestsExceededError";
 
 let discogsClient: DiscogsClient;
 
@@ -104,33 +105,39 @@ export async function handler(event: MonitorEvent, _context: Context) {
       console.log(
         "REACHED MAX REQUESTS FOR LAMBDA RUN. TRIGGERING NEXT RUN...",
         {
-          currentRequest: requestError.currentRequest,
+          currentIndex: requestError.currentIndex,
         }
       );
 
       return {
         runRepeat: true,
-        currentRequest: requestError.currentRequest,
-        currentListings: requestError.currentListings,
+        currentIndex: requestError.currentIndex,
+        currentListings: requestError.currentListings.filter(
+          (listing) =>
+            listing.shipsFrom.toLowerCase() ===
+            process.env.SHIPS_FROM?.toLowerCase()
+        ),
       };
     }
   }
 
+  const itemCount = listings.length + event.currentListings.length
+
   console.log("FETCHED WANTLIST MARKETPLACE LISTINGS FROM DISCOGS", {
     username: process.env.DISCOGS_USERNAME,
-    itemCount: listings.length,
+    itemCount,
     shipsFrom: process.env.SHIPS_FROM,
   });
 
-  if (listings.length > 0) {
-    await sendWantlistEmail(listings);
+  if (itemCount > 0) {
+    await sendWantlistEmail([...event.currentListings, ...listings.map(transformListing)]);
 
     console.log("SUCCESSFULLY SENT WANTLIST MARKETPLACE DIGEST", {
       username: process.env.DISCOGS_USERNAME,
       shipsFrom: process.env.SHIPS_FROM,
       destinationEmail: process.env.DESTINATION_EMAIL,
       senderEmail: process.env.SENDER_EMAIL,
-      itemCount: listings.length,
+      itemCount,
     });
   } else {
     console.log(
@@ -209,20 +216,18 @@ const getMarketplaceListings = async (
   );
 
   let currentRequest = 1;
-  let listings: UserTypes.Listing[] = [];
+  const listings: UserTypes.Listing[] = [];
 
   if (event.runRepeat) {
     // Skip requests that has been made in previous runs
-    currentRequest = event.currentRequest;
-    listings = [...event.currentListings, ...listings];
-    marketplaceListingIds = marketplaceListingIds.slice(event.currentRequest);
+    marketplaceListingIds = marketplaceListingIds.slice(event.currentIndex);
   }
 
   for await (const [index, id] of marketplaceListingIds.entries()) {
     // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
 
     if (index >= MAX_REQUESTS) {
-      throw new RequestsExceededError("EXCEEDED MAX REQUESTS", index, listings);
+      throw new RequestsExceededError("EXCEEDED MAX REQUESTS", index, listings.map(transformListing));
     }
 
     try {
@@ -256,14 +261,14 @@ const getMarketplaceListings = async (
   return listings;
 };
 
-const sendWantlistEmail = async (listings: UserTypes.Listing[]) => {
+const sendWantlistEmail = async (listings: TransformedListing[]) => {
   const msg: sgMail.MailDataRequired = {
     to: process.env.DESTINATION_EMAIL,
     from: process.env.SENDER_EMAIL || "",
     subject: `Discogs Wantlist Digest for ${
       process.env.DISCOGS_USERNAME
     } shipping from ${upperFirst(process.env.SHIPS_FROM)}`,
-    text: JSON.stringify(listings.map(transformListing), undefined, 2),
+    text: JSON.stringify(listings, undefined, 2),
   };
 
   try {

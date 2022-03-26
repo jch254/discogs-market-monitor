@@ -1,27 +1,29 @@
-class RequestsExceededError extends Error {
-  private _currentRequest = 0;
-  private _currentListings: UserTypes.Listing[] = [];
+import { TransformedListing } from "./interfaces";
 
-  constructor(message: string, currentRequest: number, currentListings: UserTypes.Listing[]) {
+export class RequestsExceededError extends Error {
+  private _currentIndex = 0;
+  private _currentListings: TransformedListing[] = [];
+
+  constructor(message: string, currentIndex: number, currentListings: TransformedListing[]) {
     super(message);
     this.name = "RequestsExceededError";
-    this.currentRequest = currentRequest;
+    this.currentIndex = currentIndex;
     this.currentListings = currentListings;
   }
 
-  get currentRequest() {
-    return this._currentRequest;
+  get currentIndex() {
+    return this._currentIndex;
   }
 
-  set currentRequest(value: number) {
-    this._currentRequest = value;
+  set currentIndex(value: number) {
+    this._currentIndex = value;
   }
 
   get currentListings() {
     return this._currentListings;
   }
 
-  set currentListings(value: UserTypes.Listing[]) {
+  set currentListings(value: TransformedListing[]) {
     this._currentListings = value;
   }
 }

@@ -26,6 +26,6 @@ export interface TransformedListing {
 
 export type MonitorEvent = ScheduledEvent & {
   runRepeat: boolean
-  currentRequest: number;
-  currentListings: UserTypes.Listing[];
+  currentIndex: number;
+  currentListings: TransformedListing[];
 };
