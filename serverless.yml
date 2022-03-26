@@ -61,6 +61,6 @@ stepFunctions:
               - States.ALL
               Next: CatchAllFallback
           CatchAllFallback:
-            Type: Task
+            Type: Pass
             Result: "This is a catch all fallback"
             End: true
