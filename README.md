@@ -2,7 +2,7 @@
 
 ![Build Status](https://codebuild.ap-southeast-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiUDhXeDRQQlY5UXRDRDY1RHVDSm5sK1d6TEp0UDR0QTl3QXE4V0NoZkZKZFZ6SVp3WUJBSFVtdW9iMm5CQlVzbVl5b2hHZi8zUEptZGMzdmo3b0JOcHlZPSIsIml2UGFyYW1ldGVyU3BlYyI6Inh5aTgyT0NBa2VnVmxtVFkiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
 
-Discogs Wantlist Marketplace Monitor powered by Serverless, TypeScript, Webpack and Node.js. The monitor scans the Discogs Marketplace for listings from the specified user's wantlist in the specified country and sends a digest email of all matching listings to the specified email address. It runs as an AWS Lambda function (scheduled every twelve hours). This saves manually searching through your wantlist for local listings.
+Discogs Wantlist Marketplace Monitor powered by Serverless, TypeScript, Webpack and Node.js. The monitor scans the Discogs Marketplace for listings from the specified user's wantlist in the specified country and sends a digest email of all matching listings to the specified email address. It utilises AWS Step Functions and AWS Lambda Functions (scheduled every twelve hours). This saves manually searching through your wantlist for local listings.
 
 ## Technologies Used
 
@@ -51,7 +51,7 @@ Refer to the [/infrastructure](./infrastructure) directory.
 
 ## TODO
 
-* Find solution for exceeding Lambda timeout of 15min due to Discogs rate limiting (AWS Batch, switch to Azure functions..?)
+* Implement iteration of Lambda handler via Step Functions - [https://docs.aws.amazon.com/step-functions/latest/dg/tutorial-create-iterate-pattern-section.html](https://docs.aws.amazon.com/step-functions/latest/dg/tutorial-create-iterate-pattern-section.html)
 * Make digest email pretty (add images and links etc.)
 * Improve rate limiting error handling - add exponential backoff
 * Add optional traversal of all variations of release (based on wantlist list item format e.g. vinyl - all vinyl variation)
