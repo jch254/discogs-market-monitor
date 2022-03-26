@@ -58,6 +58,7 @@ type MonitorEvent = ScheduledEvent & {
 
 export async function handler(_event: MonitorEvent, _context: Context) {
   console.log(_event)
+  console.log(_context)
 
   console.log("RUNNING DISCOGS WANTLIST MARKET MONITOR", {
     username: process.env.DISCOGS_USERNAME,
