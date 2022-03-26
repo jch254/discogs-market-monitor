@@ -20,7 +20,8 @@
         "lambda:*",
         "events:*",
         "ssm:DescribeParameters",
-        "application-autoscaling:*"
+        "application-autoscaling:*",
+        "states:*"
       ]
     },
     {
