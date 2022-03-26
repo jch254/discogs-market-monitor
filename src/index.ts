@@ -3,27 +3,40 @@ import { Client as DiscogsClient } from "disconnect";
 import { uniq, upperFirst } from "lodash";
 import * as Parser from "rss-parser";
 import * as sgMail from "@sendgrid/mail";
-import { DiscogsUserWantlistMarketplaceItem, TransformedListing } from "./interfaces";
+import {
+  DiscogsUserWantlistMarketplaceItem,
+  TransformedListing,
+} from "./interfaces";
 import { sleep } from "./utils";
 
 const USER_AGENT = "MarketMonitor/1.0";
-const MAX_REQUESTS = 30
+const MAX_REQUESTS = 30;
 
-class RequestsExceededError extends Error { 
-  private _currentRequest = 0
+class RequestsExceededError extends Error {
+  private _currentRequest = 0;
+  private _currentListings: UserTypes.Listing[] = [];
 
-  constructor(message: string, currentRequest: number) {
+  constructor(message: string, currentRequest: number, currentListings: UserTypes.Listing[] ) {
     super(message);
-    this.name = 'RequestsExceededError';
-    this.currentRequest = currentRequest
+    this.name = "RequestsExceededError";
+    this.currentRequest = currentRequest;
+    this._currentListings = currentListings;
   }
- 
+
   get currentRequest() {
-    return this._currentRequest
+    return this._currentRequest;
   }
 
   set currentRequest(value: number) {
     this._currentRequest = value;
+  }
+
+  get currentListings() {
+    return this._currentListings;
+  }
+
+  set currentListings(value: UserTypes.Listing[]) {
+    this._currentListings = value;
   }
 }
 
@@ -50,15 +63,15 @@ const parser = new Parser();
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
 
 type MonitorEvent = ScheduledEvent & {
-  currentRequest: number,
+  currentRequest: number;
   error: {
-    Error: RequestsExceededError
-  }
-}
+    Error: RequestsExceededError;
+  };
+};
 
 export async function handler(_event: MonitorEvent, _context: Context) {
-  console.log(_event)
-  console.log(_context)
+  console.log(_event);
+  console.log(_context);
 
   console.log("RUNNING DISCOGS WANTLIST MARKET MONITOR", {
     username: process.env.DISCOGS_USERNAME,
@@ -111,12 +124,24 @@ export async function handler(_event: MonitorEvent, _context: Context) {
   // Sleep for number of requests it took to fetch wantlist to reset rate limit
   await sleep(userWantlistRequestCount * 1000);
 
-  const listings = (
-    await getMarketplaceListings(wantlistMarketplaceItems)
-  ).filter(
-    (listing) =>
-      listing.ships_from.toLowerCase() === process.env.SHIPS_FROM?.toLowerCase()
-  );
+  let listings: UserTypes.Listing[] = [];
+
+  try {
+    listings = [
+      ...(await getMarketplaceListings(wantlistMarketplaceItems)).filter(
+        (listing) =>
+          listing.ships_from.toLowerCase() ===
+          process.env.SHIPS_FROM?.toLowerCase()
+      ),
+    ];
+  } catch (e) {
+    if (e instanceof RequestsExceededError) {
+      return {
+        currentIndex: e.currentRequest,
+        listings: e.currentListings
+      };
+    }
+  }
 
   console.log("FETCHED WANTLIST MARKETPLACE LISTINGS FROM DISCOGS", {
     username: process.env.DISCOGS_USERNAME,
@@ -184,13 +209,13 @@ const getMarketplaceListing = async (id: string, currentRequest: number) => {
   return listing;
 };
 
-const snooze = async (index:number) => {
+const snooze = async (index: number) => {
   if (index !== 0 && index % 30 === 0) {
     console.log("SLEEPING FOR 30 SECONDS AFTER FETCHING 30 ITEMS...");
 
     await sleep(30 * 1000);
   }
-}
+};
 
 const getMarketplaceListings = async (
   wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[]
@@ -215,7 +240,7 @@ const getMarketplaceListings = async (
     // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
 
     if (index >= MAX_REQUESTS) {
-      throw new RequestsExceededError('Exceeded Max requests', index)
+      throw new RequestsExceededError("Exceeded Max requests", index, listings);
     }
 
     try {
@@ -224,7 +249,7 @@ const getMarketplaceListings = async (
       currentRequest += 1;
       listings.push(listing);
 
-      await snooze(index)
+      await snooze(index);
     } catch {
       // TODO: Determine if rate limiting error
       console.log(
@@ -242,7 +267,7 @@ const getMarketplaceListings = async (
       currentRequest += 1;
       listings.push(listing);
 
-      await snooze(index)
+      await snooze(index);
     }
   }
 
@@ -285,5 +310,5 @@ const transformListing = (listing: UserTypes.Listing): TransformedListing => {
     format: listing.release.format,
     year: listing.release.year,
     shipsFrom: listing.ships_from,
-  }
-}
+  };
+};

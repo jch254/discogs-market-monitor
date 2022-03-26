@@ -52,13 +52,10 @@ stepFunctions:
             Type: Task
             Resource:
               Fn::GetAtt: [handler, Arn]
+            Next: MarketMonitor
             Catch:
-            - ErrorEquals: ["RequestsExceededError"]
-              Next: MarketMonitor
-              ResultPath: $.error
             - ErrorEquals: ["States.ALL"]
               Next: CatchAllFallback
-            End: true
           CatchAllFallback:
             Type: Pass
             Result: "This is a catch all fallback"
