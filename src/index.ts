@@ -121,7 +121,7 @@ export async function handler(event: MonitorEvent | null, _context: Context) {
     }
   }
 
-  const currentListings = event != null ? event.data?.currentListings : [];
+  const currentListings = event != null ? event.data?.currentListings ?? [] : [];
   const itemCount = listings.length + currentListings.length;
 
   console.log("FETCHED WANTLIST MARKETPLACE LISTINGS FROM DISCOGS", {
