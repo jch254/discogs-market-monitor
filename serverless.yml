@@ -53,6 +53,7 @@ stepFunctions:
             Resource:
               Fn::GetAtt: [handler, Arn]
             Next: MarketMonitor
+            ResultPath: $.data
             Catch:
             - ErrorEquals: ["States.ALL"]
               Next: CatchAllFallback
