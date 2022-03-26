@@ -25,6 +25,7 @@
     "cross-env": "^7.0.3",
     "serverless": "^3.7.4",
     "serverless-offline": "^8.5.0",
+    "serverless-step-functions": "^3.5.1",
     "serverless-webpack": "^5.6.1",
     "source-map-loader": "^3.0.1",
     "ts-loader": "^9.2.6",

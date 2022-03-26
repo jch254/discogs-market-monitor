@@ -7,6 +7,25 @@ import { DiscogsUserWantlistMarketplaceItem, TransformedListing } from "./interf
 import { sleep } from "./utils";
 
 const USER_AGENT = "MarketMonitor/1.0";
+const MAX_REQUESTS = 600
+
+class RequestsExceededError extends Error { 
+  private _currentRequest = 0
+
+  constructor(message: string, currentRequest: number) {
+    super(message);
+    this.name = 'RequestsExceededError';
+    this.currentRequest = currentRequest
+  }
+ 
+  get currentRequest() {
+    return this._currentRequest
+  }
+
+  set currentRequest(value: number) {
+    this._currentRequest = value;
+  }
+}
 
 let discogsClient: DiscogsClient;
 
@@ -30,7 +49,16 @@ const parser = new Parser();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-export async function handler(_event: ScheduledEvent, _context: Context) {
+type MonitorEvent = ScheduledEvent & {
+  currentRequest: number,
+  error: {
+    Error: RequestsExceededError
+  }
+}
+
+export async function handler(_event: MonitorEvent, _context: Context) {
+  console.log(_event)
+
   console.log("RUNNING DISCOGS WANTLIST MARKET MONITOR", {
     username: process.env.DISCOGS_USERNAME,
     shipsFrom: process.env.SHIPS_FROM,
@@ -181,8 +209,13 @@ const getMarketplaceListings = async (
   let currentRequest = 1;
   const listings: UserTypes.Listing[] = [];
 
+  // TODO: skip past existing requests using data from event
   for await (const [index, id] of marketplaceListingIds.entries()) {
     // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
+
+    if (index >= MAX_REQUESTS) {
+      throw new RequestsExceededError('Exceeded Max requests', index)
+    }
 
     try {
       const listing = await getMarketplaceListing(id, currentRequest);

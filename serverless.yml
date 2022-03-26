@@ -6,6 +6,7 @@ useDotenv: true
 
 plugins:
   - serverless-webpack
+  - serverless-step-functions
 
 package:
   individually: true
@@ -39,3 +40,21 @@ functions:
       SHIPS_FROM: ${ssm:/discogs-market-monitor/ships_from}
       DESTINATION_EMAIL: ${ssm:/discogs-market-monitor/destination_email}
       SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email}
+
+stepFunctions:
+  stateMachines:
+    monitor:
+      definition:
+        StartAt: MarketMonitor
+        States:
+          MarketMonitor:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [handler, Arn]
+            Retry:
+            - ErrorEquals:
+              - States.Timeout
+              - Lambda.Unknown
+              IntervalSeconds: 1
+              MaxAttempts: 100
+              ResultPath: $.error
