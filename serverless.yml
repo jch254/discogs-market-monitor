@@ -58,6 +58,7 @@ stepFunctions:
               ResultPath: $.error
             - ErrorEquals: ["States.ALL"]
               Next: CatchAllFallback
+            End: true
           CatchAllFallback:
             Type: Pass
             Result: "This is a catch all fallback"
