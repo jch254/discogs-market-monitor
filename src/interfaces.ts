@@ -15,7 +15,7 @@ export interface TransformedListing {
   shipsFrom: string;
   posted: string;
   price: string;
-  shippingPrice: string;
+  shippingPrice?: string;
   description: string;
   artist: string;
   format: string;

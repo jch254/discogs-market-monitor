@@ -240,8 +240,8 @@ const transformListing = (listing: UserTypes.Listing): TransformedListing => {
   return {
     artist: listing.release.artist,
     title: listing.release.title,
-    price: `${listing.price.value} ${listing.price.currency}`,
-    shippingPrice: `${listing.shipping_price.value} ${listing.shipping_price.currency}`,
+    price: listing.original_price.formatted,
+    shippingPrice: listing.original_shipping_price ? `${listing.original_shipping_price.value} ${listing.original_shipping_price.currency}` : undefined,
     uri: listing.uri,
     condition: listing.condition,
     sleeveCondition: listing.sleeve_condition,
