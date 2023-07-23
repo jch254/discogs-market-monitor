@@ -48,34 +48,3 @@ TBC
 ## Deployment/Infrastructure
 
 Refer to the [/infrastructure](./infrastructure) directory.
-
-## TODO
-
-* Find solution for exceeding Lambda timeout of 15min due to Discogs rate limiting (AWS Batch, switch to Azure functions..?)
-* Make digest email pretty (add images and links etc.)
-* Improve rate limiting error handling - add exponential backoff
-* Add optional traversal of all variations of release (based on wantlist list item format e.g. vinyl - all vinyl variation)
-* Add better handling for other Discogs errors (e.g. 502 response):
-
-```
-{
-    "errorMessage": "Status code 502",
-    "errorType": "Error",
-    "stackTrace": [
-        "Error: Status code 502",
-        "    at ClientRequest.<anonymous> (/Users/jch254/Dev/jch254/proj/discogs-market-monitor/node_modules/rss-parser/lib/parser.js:88:25)",
-        "    at Object.onceWrapper (node:events:640:26)",
-        "    at ClientRequest.emit (node:events:520:28)",
-        "    at ClientRequest.emit (node:domain:475:12)",
-        "    at HTTPParser.parserOnIncomingClient (node:_http_client:618:27)",
-        "    at HTTPParser.parserOnHeadersComplete (node:_http_common:128:17)",
-        "    at TLSSocket.socketOnData (node:_http_client:482:22)",
-        "    at TLSSocket.emit (node:events:520:28)",
-        "    at TLSSocket.emit (node:domain:475:12)",
-        "    at addChunk (node:internal/streams/readable:315:12)",
-        "    at readableAddChunk (node:internal/streams/readable:289:9)",
-        "    at TLSSocket.Readable.push (node:internal/streams/readable:228:10)",
-        "    at TLSWrap.onStreamRead (node:internal/stream_base_commons:190:23)"
-    ]
-}
-```
