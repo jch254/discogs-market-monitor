@@ -27,7 +27,7 @@ You must [sign up for/create a Discogs app](https://www.discogs.com/settings/dev
 * **DISCOGS_CONSUMER_KEY/DISCOGS_CONSUMER_SECRET** OR **DISCOGS_USER_TOKEN** (req - see [Discogs API documentation](http://www.discogs.com/developers/#page:authentication) for more info) - Auth for Discogs app
 * **SENDGRID_API_KEY** (req) - Auth for SendGrid account
 * **DISCOGS_USERNAME** (req) - Username of Discogs user (wantlist will be used from this user)
-* **SHIPS_FROM** (req) - Country where Marketplace listings should ship from (e.g. Australia - case insensitive)
+* **SHIPS_FROM** (req) - Country where Marketplace listings should ship from (e.g. Australia or United States - case insensitive)
 * **DESTINATION_EMAIL** (req) - Destination email address to send digest
 * **SENDER_EMAIL** (req) - Email address to send digest from via SendGrid (must be configured via SendGrid)
 * **LOG_WANTLIST** (opt) - If true, user's wantlist will be logged to console
