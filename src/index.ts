@@ -194,7 +194,7 @@ const getMarketplaceListings = async (
     } catch {
       // TODO: Determine if rate limiting error
       console.log(
-        "FUCK!! HIT DISCOGS RATE LIMITING ERROR. SLEEPING FOR 5 SECONDS...",
+        "FUCK!!! HIT DISCOGS RATE LIMITING ERROR. SLEEPING FOR 5 SECONDS...",
         {
           id,
           currentRequest,
