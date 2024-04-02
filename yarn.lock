@@ -3013,9 +3013,10 @@ dir-glob@^3.0.1:
   dependencies:
     path-type "^4.0.0"
 
-"disconnect@git+https://github.com/jch254/disconnect.git":
+disconnect@^1.2.2:
   version "1.2.2"
-  resolved "git+ssh://git@github.com/jch254/disconnect.git#7bb541f2cc007a54dc2528aacc1225f9aa6a8522"
+  resolved "https://registry.yarnpkg.com/disconnect/-/disconnect-1.2.2.tgz#449e43c70e2f8bff0f36a0a18826a406bfd8f82a"
+  integrity sha512-0QWtdUdijooW0hUa4V5CYm6eQcWThKBh+1pnFk3C8gJo7zQQz+AX6Hs41df/DMjUeD6SN7UBQzdFwpxZv+Vdbw==
   dependencies:
     oauth-1.0a "2.x.x"
 
