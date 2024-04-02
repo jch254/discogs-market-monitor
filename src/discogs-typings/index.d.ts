@@ -18,12 +18,13 @@ declare module "disconnect" {
   interface DiscogsError {
     statusCode: number;
     message: string;
+    rateLimit: { limit: number, used: number, remaining: number } | null
   }
 
   interface AuthError extends DiscogsError { }
 
   interface Callback<T> {
-    (err: DiscogsError | null, data: T | null, rateLimit: number | null): void;
+    (err: DiscogsError | null, data: T | null, rateLimit: { limit: number, used: number, remaining: number } | null): void;
   }
 
   type AuthLevel = 0 | 1 | 2;

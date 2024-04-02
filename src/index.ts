@@ -55,9 +55,11 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
     itemCount: wantlistMarketplaceItems.length,
   });
 
-  wantlistMarketplaceItems.forEach((item) => {
-    debugLog(item.title, item.marketplaceItems);
-  });
+  if (process.env.LOG_WANTLIST) {
+    wantlistMarketplaceItems.forEach((item) => {
+      console.log(item.title, item.marketplaceItems);
+    });
+  }
 
   const listings = (
     await getMarketplaceListings(discogsClient, wantlistMarketplaceItems)

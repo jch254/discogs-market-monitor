@@ -4,13 +4,14 @@ import { uniq } from "lodash";
 
 const LeakyBucket = require("fix-esm").require("leaky-bucket").default;
 
-console.log(LeakyBucket)
-
 // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
+// Setting capacity of 55 requests for a buffer of 5 requests
+// TODO: Fine tune buffer
 const bucket = new LeakyBucket({
-  capacity: 60,
+  initialCapacity: 0,
+  capacity: 55,
   interval: 60,
-  timeout: 900
+  timeout: 900,
 });
 
 export const getDiscogsClient = () => {
@@ -34,7 +35,7 @@ export const getDiscogsClient = () => {
     discogsClient = new DiscogsClient(USER_AGENT);
   }
 
-  return discogsClient
+  return discogsClient;
 };
 
 export const getUserWantlist = async (discogsClient: DiscogsClient, username?: string) => {
@@ -91,15 +92,16 @@ export const getMarketplaceListings = async (
 
       currentRequest += 1;
       listings.push(listing);
-
     } catch (error: any) {
+      console.log(error)
+
       if (error.statusCode === 429) {
-        // TODO: Figure out how to handle rate limiting exceeded
         console.log(
           'FUCK!!! HIT DISCOGS RATE LIMITING ERROR.',
           {
             id,
             currentRequest,
+            rateLimit: error.rateLimit
           }
         );
       }
@@ -111,11 +113,7 @@ export const getMarketplaceListings = async (
 
 
 export const getMarketplaceListing = async (discogsClient: DiscogsClient, id: string, currentRequest: number) => {
-  const marketplace = discogsClient.marketplace()
-
-  await bucket.throttle();
-
-  const listing = await marketplace.getListing(parseInt(id, 10));
+  const listing = await getListingAsync(discogsClient, parseInt(id, 10));
 
   console.log("FETCHED DISCOGS MARKETPLACE LISTING", {
     id,
@@ -124,3 +122,20 @@ export const getMarketplaceListing = async (discogsClient: DiscogsClient, id: st
 
   return listing;
 };
+
+const getListingAsync = async (discogsClient: DiscogsClient, id: number): Promise<UserTypes.Listing> => {
+  return new Promise(async (resolve, reject) => {
+    await bucket.throttle();
+
+    discogsClient.marketplace().getListing(id, (err, data, rateLimit) => {
+      if ((err && err !== null)) {
+        err.rateLimit = rateLimit
+        reject(err);
+      } else if (data === null) {
+        reject(err)}
+      else {
+        resolve(data);
+      }
+    });
+  });
+}
