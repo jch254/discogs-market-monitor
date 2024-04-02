@@ -31,7 +31,7 @@ You must [sign up for/create a Discogs app](https://www.discogs.com/settings/dev
 * **DESTINATION_EMAIL** (req) - Destination email address to send digest
 * **SENDER_EMAIL** (req) - Email address to send digest from via SendGrid (must be configured via SendGrid)
 * **LOG_WANTLIST** (opt) - If true, user's wantlist will be logged to console
-
+* **DEBUG** (opt) - If true, enables debug logging to console
 **All required environment variables above must be set before `yarn run dev` command. These can also be set via a .env file.**
 
 E.g. `DISCOGS_USER_TOKEN=YOUR_USER_TOKEN SENDGRID_API_KEY=YOUR_API_KEY DISCOGS_USERNAME=YOUR_USERNAME SHIPS_FROM="New Zealand" DESTINATION_EMAIL=me@email.com SENDER_EMAIL=sendgrid@email.com yarn run dev`
