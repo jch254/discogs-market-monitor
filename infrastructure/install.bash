@@ -2,6 +2,8 @@
 
 echo Installing dependencies...
 
-yarn install --ignore-engines --ignore-scripts
+npm install
+# Using npm until build issues resolved with yarn
+# yarn install --ignore-engines --ignore-scripts
 
 echo Finished installing dependencies
