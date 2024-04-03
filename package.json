@@ -14,8 +14,6 @@
   "dependencies": {
     "@sendgrid/mail": "^8.1.1",
     "disconnect": "^1.2.2",
-    "fix-esm": "^1.0.1",
-    "leaky-bucket": "^4.1.4",
     "lodash": "^4.17.21",
     "node": "^18.20.0",
     "rss-parser": "^3.13.0"

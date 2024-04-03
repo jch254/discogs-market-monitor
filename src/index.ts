@@ -4,7 +4,11 @@ import * as Parser from "rss-parser";
 import * as sgMail from "@sendgrid/mail";
 import { DiscogsUserWantlistMarketplaceItem } from "./interfaces";
 import { debugLog, transformListing } from "./utils";
-import { getDiscogsClient, getMarketplaceListings, getUserWantlist } from "./wrappedDiscogsClient";
+import {
+  getDiscogsClient,
+  getMarketplaceListings,
+  getUserWantlist,
+} from "./wrappedDiscogsClient";
 
 const discogsClient = getDiscogsClient();
 const parser = new Parser();
@@ -50,7 +54,7 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
       })
     );
 
-    debugLog("FETCHED WANTLIST MARKETPLACE SUMMARY FROM DISCOGS RSS FEED", {
+  debugLog("FETCHED WANTLIST MARKETPLACE SUMMARY FROM DISCOGS RSS FEED", {
     username: process.env.DISCOGS_USERNAME,
     itemCount: wantlistMarketplaceItems.length,
   });
@@ -114,6 +118,6 @@ const sendWantlistEmail = async (listings: UserTypes.Listing[]) => {
       console.error(error.response.body);
     }
 
-    throw error
+    throw error;
   }
 };

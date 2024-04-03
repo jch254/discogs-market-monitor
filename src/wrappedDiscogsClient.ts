@@ -1,8 +1,7 @@
 import { Client as DiscogsClient } from "disconnect";
 import { DiscogsUserWantlistMarketplaceItem } from "./interfaces";
 import { uniq } from "lodash";
-
-const LeakyBucket = require("fix-esm").require("leaky-bucket").default;
+import { LeakyBucket } from "./LeakyBucket/leakyBucket";
 
 // Discogs API requests are throttled by the server by source IP to 60 per minute for authenticated requests
 // Setting capacity of 55 requests for a buffer of 5 requests
@@ -18,7 +17,7 @@ export const getDiscogsClient = () => {
   const USER_AGENT = "MarketMonitor/1.0";
 
   let discogsClient: DiscogsClient;
-  
+
   if (process.env.DISCOGS_USER_TOKEN) {
     discogsClient = new DiscogsClient(USER_AGENT, {
       userToken: process.env.DISCOGS_USER_TOKEN,
@@ -38,7 +37,10 @@ export const getDiscogsClient = () => {
   return discogsClient;
 };
 
-export const getUserWantlist = async (discogsClient: DiscogsClient, username?: string) => {
+export const getUserWantlist = async (
+  discogsClient: DiscogsClient,
+  username?: string
+) => {
   const wantlist = discogsClient.user().wantlist();
 
   let wantlistReleases: WantlistTypes.Want[] = [];
@@ -66,7 +68,6 @@ export const getUserWantlist = async (discogsClient: DiscogsClient, username?: s
   return { wantlistReleases, requestCount: totalPages };
 };
 
-
 export const getMarketplaceListings = async (
   discogsClient: DiscogsClient,
   wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[]
@@ -88,22 +89,23 @@ export const getMarketplaceListings = async (
 
   for await (const [_index, id] of marketplaceListingIds.entries()) {
     try {
-      const listing = await getMarketplaceListing(discogsClient, id, currentRequest);
+      const listing = await getMarketplaceListing(
+        discogsClient,
+        id,
+        currentRequest
+      );
 
       currentRequest += 1;
       listings.push(listing);
     } catch (error: any) {
-      console.log(error)
+      console.log(error);
 
       if (error.statusCode === 429) {
-        console.log(
-          'FUCK!!! HIT DISCOGS RATE LIMITING ERROR.',
-          {
-            id,
-            currentRequest,
-            rateLimit: error.rateLimit
-          }
-        );
+        console.log("FUCK!!! HIT DISCOGS RATE LIMITING ERROR.", {
+          id,
+          currentRequest,
+          rateLimit: error.rateLimit,
+        });
       }
     }
   }
@@ -111,8 +113,11 @@ export const getMarketplaceListings = async (
   return listings;
 };
 
-
-export const getMarketplaceListing = async (discogsClient: DiscogsClient, id: string, currentRequest: number) => {
+export const getMarketplaceListing = async (
+  discogsClient: DiscogsClient,
+  id: string,
+  currentRequest: number
+) => {
   const listing = await getListingAsync(discogsClient, parseInt(id, 10));
 
   console.log("FETCHED DISCOGS MARKETPLACE LISTING", {
@@ -123,19 +128,22 @@ export const getMarketplaceListing = async (discogsClient: DiscogsClient, id: st
   return listing;
 };
 
-const getListingAsync = async (discogsClient: DiscogsClient, id: number): Promise<UserTypes.Listing> => {
+const getListingAsync = async (
+  discogsClient: DiscogsClient,
+  id: number
+): Promise<UserTypes.Listing> => {
   return new Promise(async (resolve, reject) => {
     await bucket.throttle();
 
     discogsClient.marketplace().getListing(id, (err, data, rateLimit) => {
-      if ((err && err !== null)) {
-        err.rateLimit = rateLimit
+      if (err && err !== null) {
+        err.rateLimit = rateLimit;
         reject(err);
       } else if (data === null) {
-        reject(err)}
-      else {
+        reject(err);
+      } else {
         resolve(data);
       }
     });
   });
-}
+};
