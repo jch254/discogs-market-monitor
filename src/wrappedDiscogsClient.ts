@@ -73,7 +73,7 @@ export const getMarketplaceListings = async (
   wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[]
 ) => {
   const marketplaceListingIds = uniq(
-    wantlistMarketplaceItems.splice(5).flatMap((item) =>
+    wantlistMarketplaceItems.flatMap((item) =>
       item.marketplaceItems.map((marketplaceItem) => {
         if (marketplaceItem.link) {
           return marketplaceItem.link.split("/").pop();
