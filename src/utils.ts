@@ -14,9 +14,7 @@ export const transformListing = (
     artist: listing.release.artist,
     title: listing.release.title,
     price: listing.original_price.formatted,
-    shippingPrice: listing.original_shipping_price
-      ? `${listing.original_shipping_price.value} ${listing.original_shipping_price.currency}`
-      : undefined,
+    shippingPrice: getShippingPriceWithCurrency(listing),
     uri: listing.uri,
     condition: listing.condition,
     sleeveCondition: listing.sleeve_condition,
@@ -27,4 +25,21 @@ export const transformListing = (
     year: listing.release.year,
     shipsFrom: listing.ships_from,
   };
+};
+
+const getShippingPriceWithCurrency = (listing: UserTypes.Listing) => {
+  if (listing.original_shipping_price.value) {
+    return `${listing.original_shipping_price.value} ${
+      listing.original_shipping_price.currency ||
+      listing.original_price.curr_abbr
+    }`;
+  }
+
+  if (listing.shipping_price.value) {
+    return `${listing.shipping_price.value} ${
+      listing.shipping_price.currency || listing.original_price.curr_abbr
+    }`;
+  }
+
+  return "TBC";
 };
