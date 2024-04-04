@@ -266,9 +266,9 @@ An example event file is included in the [test.json](./test.json) file. This sho
 
 ```
 {
-  username: "jch254"
-  shipsFrom: "Australia, New Zealand",
-  destinationEmail: "jordan@jch254.com"
+  "username": "YOUR_DISCOGS_USERNAME",
+  "shipsFrom": "Australia, New Zealand",
+  "destinationEmail": "you@internet.com"
 }
 ```
 
