@@ -2,7 +2,7 @@
 
 ![Build Status](https://codebuild.ap-southeast-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiUDhXeDRQQlY5UXRDRDY1RHVDSm5sK1d6TEp0UDR0QTl3QXE4V0NoZkZKZFZ6SVp3WUJBSFVtdW9iMm5CQlVzbVl5b2hHZi8zUEptZGMzdmo3b0JOcHlZPSIsIml2UGFyYW1ldGVyU3BlYyI6Inh5aTgyT0NBa2VnVmxtVFkiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
 
-Discogs Wantlist Marketplace Monitor powered by Serverless, TypeScript, Webpack and Node.js. The monitor scans the Discogs Marketplace for listings from the specified user's wantlist in the specified country and sends a digest email of all matching listings to the specified email address. It runs as an AWS Lambda function (scheduled every twelve hours). This saves manually searching through your wantlist for local listings.
+Discogs Wantlist Marketplace Monitor powered by Serverless, TypeScript, Webpack and Node.js. The monitor scans the Discogs Marketplace for listings from the specified user's wantlist in the specified countries and sends a digest email of all matching listings to the specified email address. It runs as an AWS Lambda function (scheduled every twelve hours). This saves manually searching through your wantlist for local listings.
 
 ## Technologies Used
 
@@ -249,7 +249,7 @@ You must [sign up for/create a Discogs app](https://www.discogs.com/settings/dev
 - **DISCOGS_CONSUMER_KEY/DISCOGS_CONSUMER_SECRET** OR **DISCOGS_USER_TOKEN** (req - see [Discogs API documentation](http://www.discogs.com/developers/#page:authentication) for more info) - Auth for Discogs app
 - **SENDGRID_API_KEY** (req) - Auth for SendGrid account
 - **DISCOGS_USERNAME** (req) - Username of Discogs user (wantlist will be used from this user)
-- **SHIPS_FROM** (req) - Country where Marketplace listings should ship from (e.g. Australia or United States - case insensitive). Multiple values accepted comma separated. E.g. Australia,New Zealand
+- **SHIPS_FROM** (req) - Country where Marketplace listings should ship from (e.g. Australia or United States - case insensitive). Multiple values accepted comma separated. E.g. australia,new zealand
 - **DESTINATION_EMAIL** (req) - Destination email address to send digest
 - **SENDER_EMAIL** (req) - Email address to send digest from via SendGrid (must be configured via SendGrid)
 - **LOG_WANTLIST** (opt) - If true, user's wantlist will be logged to console
