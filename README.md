@@ -18,7 +18,7 @@ Discogs Wantlist Marketplace Monitor powered by Serverless, TypeScript, Webpack 
 
 <details>
   <summary>
-    Example digest email (currently JSON dump)
+    Example digest email shipping from Australia and New Zealand (currently JSON dump)
   </summary>
 
 ```
