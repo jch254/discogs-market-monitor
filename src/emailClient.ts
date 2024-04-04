@@ -4,13 +4,21 @@ import { transformListing } from "./utils";
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-export const sendWantlistEmail = async (listings: UserTypes.Listing[]) => {
+export const sendWantlistEmail = async (
+  destinationEmail: string,
+  username: string,
+  shipsFrom: string,
+  listings: UserTypes.Listing[]
+) => {
+  const shipsFromList = shipsFrom
+    .split(",")
+    .map((s) => upperFirst(s.trim()))
+    .join(", ");
+
   const msg: sgMail.MailDataRequired = {
-    to: process.env.DESTINATION_EMAIL,
+    to: destinationEmail,
     from: process.env.SENDER_EMAIL || "",
-    subject: `Discogs Wantlist Digest for ${
-      process.env.DISCOGS_USERNAME
-    } shipping from ${upperFirst(process.env.SHIPS_FROM)}`,
+    subject: `Discogs Wantlist Digest for ${username} shipping from ${shipsFromList}`,
     text: JSON.stringify(listings.map(transformListing), undefined, 2),
   };
 

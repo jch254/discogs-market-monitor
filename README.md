@@ -248,20 +248,35 @@ You must [sign up for/create a Discogs app](https://www.discogs.com/settings/dev
 
 - **DISCOGS_CONSUMER_KEY/DISCOGS_CONSUMER_SECRET** OR **DISCOGS_USER_TOKEN** (req - see [Discogs API documentation](http://www.discogs.com/developers/#page:authentication) for more info) - Auth for Discogs app
 - **SENDGRID_API_KEY** (req) - Auth for SendGrid account
-- **DISCOGS_USERNAME** (req) - Username of Discogs user (wantlist will be used from this user)
-- **SHIPS_FROM** (req) - Country where Marketplace listings should ship from (e.g. Australia or United States - case insensitive). Multiple values accepted comma separated. E.g. australia,new zealand
-- **DESTINATION_EMAIL** (req) - Destination email address to send digest
 - **SENDER_EMAIL** (req) - Email address to send digest from via SendGrid (must be configured via SendGrid)
 - **LOG_WANTLIST** (opt) - If true, user's wantlist will be logged to console
 - **DEBUG** (opt) - If true, enables debug logging to console
 
   **All required environment variables above must be set before `yarn run dev` command. These can also be set via a .env file.**
 
-E.g. `DISCOGS_USER_TOKEN=YOUR_USER_TOKEN SENDGRID_API_KEY=YOUR_API_KEY DISCOGS_USERNAME=YOUR_USERNAME SHIPS_FROM="New Zealand" DESTINATION_EMAIL=me@email.com SENDER_EMAIL=sendgrid@email.com yarn run dev`
+E.g. `DISCOGS_USER_TOKEN=YOUR_USER_TOKEN SENDGRID_API_KEY=YOUR_API_KEY SENDER_EMAIL=sendgrid@youremail.com yarn run dev --path test.json`
+
+### Event variables
+
+Discogs Wantlist Marketplace Monitor is designed to be run on a schedule via AWS Lambda meaning the event object passed to the handler function is of ScheduledEvent type. The event object is used to pass data into the handler function - see the [MarketMonitorEvent interface](/src/interfaces.ts) for definition.
+
+#### Example MarketMonitorEvent file/object
+
+An example event file is included in the [test.json](./test.json) file. This should be modified as needed for testing.
+
+```
+{
+  username: "jch254"
+  shipsFrom: "Australia, New Zealand",
+  destinationEmail: "jordan@jch254.com"
+}
+```
+
+Once the [test.json](./test.json) file has been configured, use the following commands to install and run the monitor.
 
 ```
 yarn install
-yarn run dev
+yarn run dev --path test.json
 ```
 
 ## Testing

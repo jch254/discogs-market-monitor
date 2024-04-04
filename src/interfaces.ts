@@ -1,4 +1,5 @@
 import Parser from "rss-parser";
+import { ScheduledEvent } from "aws-lambda";
 
 export interface DiscogsUserWantlistMarketplaceItem {
   title: string;
@@ -21,4 +22,10 @@ export interface TransformedListing {
   format: string;
   title: string;
   year: number;
+}
+
+export interface MarketMonitorEvent extends ScheduledEvent {
+  destinationEmail: string;
+  username: string;
+  shipsFrom: string; // Multiple supported - comma separated
 }

@@ -1,6 +1,9 @@
-import { Context, ScheduledEvent } from "aws-lambda";
+import { Context } from "aws-lambda";
 import * as Parser from "rss-parser";
-import { DiscogsUserWantlistMarketplaceItem } from "./interfaces";
+import {
+  DiscogsUserWantlistMarketplaceItem,
+  MarketMonitorEvent,
+} from "./interfaces";
 import { debugLog } from "./utils";
 import {
   getDiscogsClient,
@@ -12,21 +15,23 @@ import { sendWantlistEmail } from "./emailClient";
 const discogsClient = getDiscogsClient();
 const parser = new Parser();
 
-export async function handler(_event: ScheduledEvent, _context: Context) {
+export async function handler(event: MarketMonitorEvent, _context: Context) {
+  const { username, shipsFrom, destinationEmail } = event;
+
   console.log("RUNNING DISCOGS WANTLIST MARKET MONITOR", {
-    username: process.env.DISCOGS_USERNAME,
-    shipsFrom: process.env.SHIPS_FROM,
-    destinationEmail: process.env.DESTINATION_EMAIL,
+    username,
+    shipsFrom,
+    destinationEmail,
     senderEmail: process.env.SENDER_EMAIL,
   });
 
   const {
     wantlistReleases: userWantlist,
     requestCount: userWantlistRequestCount,
-  } = await getUserWantlist(discogsClient, process.env.DISCOGS_USERNAME);
+  } = await getUserWantlist(discogsClient, username);
 
   debugLog("FETCHED USER WANTLIST FROM DISCOGS", {
-    username: process.env.DISCOGS_USERNAME,
+    username,
     itemCount: userWantlist.length,
     requestCount: userWantlistRequestCount,
   });
@@ -41,7 +46,7 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
   );
 
   debugLog("FETCHED WANTLIST MARKETPLACE SUMMARY FROM DISCOGS RSS FEED", {
-    username: process.env.DISCOGS_USERNAME,
+    username,
     itemCount: wantlistMarketplaceItems.length,
   });
 
@@ -52,22 +57,28 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
   }
 
   const shipsFromListings = await getShipsFromListings(
+    shipsFrom,
     wantlistMarketplaceItems
   );
 
   debugLog("FETCHED WANTLIST MARKETPLACE LISTINGS FROM DISCOGS", {
-    username: process.env.DISCOGS_USERNAME,
+    username,
     itemCount: shipsFromListings.length,
-    shipsFrom: process.env.SHIPS_FROM,
+    shipsFrom,
   });
 
   if (shipsFromListings.length > 0) {
-    await sendWantlistEmail(shipsFromListings);
+    await sendWantlistEmail(
+      destinationEmail,
+      username,
+      shipsFrom,
+      shipsFromListings
+    );
 
     console.log("SUCCESSFULLY SENT WANTLIST MARKETPLACE DIGEST", {
-      username: process.env.DISCOGS_USERNAME,
-      shipsFrom: process.env.SHIPS_FROM,
-      destinationEmail: process.env.DESTINATION_EMAIL,
+      username,
+      shipsFrom,
+      destinationEmail,
       senderEmail: process.env.SENDER_EMAIL,
       itemCount: shipsFromListings.length,
     });
@@ -75,8 +86,8 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
     console.log(
       "SKIPPING SENDING WANTLIST MARKETPLACE DIGEST AS THERE ARE NO MATCHING LISTINGS",
       {
-        username: process.env.DISCOGS_USERNAME,
-        shipsFrom: process.env.SHIPS_FROM,
+        username,
+        shipsFrom,
       }
     );
   }
@@ -101,14 +112,15 @@ const getWantlistMarketplaceItems = async (
 };
 
 const getShipsFromListings = async (
+  shipsFrom: string,
   wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[]
 ) => {
   return (
     await getMarketplaceListings(discogsClient, wantlistMarketplaceItems)
   ).filter((listing) => {
     const shipsFromList =
-      process.env.SHIPS_FROM?.split(",").map((s) => s.trim().toLowerCase()) ||
-      [];
+      shipsFrom?.split(",").map((s) => s.trim().toLowerCase()) || [];
+
     return shipsFromList.includes(listing.ships_from.toLowerCase());
   });
 };
