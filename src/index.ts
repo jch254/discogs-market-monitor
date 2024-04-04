@@ -67,10 +67,12 @@ export async function handler(_event: ScheduledEvent, _context: Context) {
 
   const listings = (
     await getMarketplaceListings(discogsClient, wantlistMarketplaceItems)
-  ).filter(
-    (listing) =>
-      listing.ships_from.toLowerCase() === process.env.SHIPS_FROM?.toLowerCase()
-  );
+  ).filter((listing) => {
+    const shipsFromList =
+      process.env.SHIPS_FROM?.split(",").map((s) => s.trim().toLowerCase()) ||
+      [];
+    return shipsFromList.includes(listing.ships_from.toLowerCase());
+  });
 
   debugLog("FETCHED WANTLIST MARKETPLACE LISTINGS FROM DISCOGS", {
     username: process.env.DISCOGS_USERNAME,
