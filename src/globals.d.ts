@@ -1,2 +1,1 @@
-declare module 'serverless-webpack';
-declare module 'leaky-bucket';
+declare module "serverless-webpack";
