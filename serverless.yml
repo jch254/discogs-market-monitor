@@ -1,6 +1,6 @@
 service: discogs-market-monitor
 
-frameworkVersion: '2 || 3'
+frameworkVersion: "2 || 3"
 
 useDotenv: true
 
@@ -13,7 +13,7 @@ package:
 custom:
   webpack:
     webpackConfig: ./webpack.config.ts
-    packager: 'yarn'
+    packager: "yarn"
     includeModules:
       forceExclude:
         - aws-sdk
@@ -29,13 +29,7 @@ functions:
     handler: src/index.handler
     memorySize: 256
     timeout: 900
-    events:
-      # Invoke Lambda function every 12 hours
-      - schedule: rate(12 hours)
     environment:
       DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token}
       SENDGRID_API_KEY: ${ssm:/discogs-market-monitor/sendgrid_api_key}
-      DISCOGS_USERNAME: ${ssm:/discogs-market-monitor/discogs_username}
-      SHIPS_FROM: ${ssm:/discogs-market-monitor/ships_from}
-      DESTINATION_EMAIL: ${ssm:/discogs-market-monitor/destination_email}
       SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email}
