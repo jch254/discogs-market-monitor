@@ -2,6 +2,6 @@
 
 echo Installing dependencies...
 
-yarn install --ignore-engines --ignore-scripts
+pnpm install --ignore-scripts
 
 echo Finished installing dependencies

@@ -13,14 +13,14 @@ package:
 custom:
   webpack:
     webpackConfig: ./webpack.config.ts
-    packager: "yarn"
+    packager: "pnpm"
     includeModules:
       forceExclude:
         - aws-sdk
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs22.x
   stage: prod
   region: ap-southeast-2
 

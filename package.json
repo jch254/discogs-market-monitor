@@ -4,7 +4,8 @@
   "description": "Alert when new Discogs marketplace listings in your areas",
   "main": "src/index.ts",
   "scripts": {
-    "lint": "tslint --type-check --project tsconfig.json || exit 0",
+    "lint": "tslint --project tsconfig.json || exit 0",
+    "lint:fix": "tslint --project tsconfig.json --fix || exit 0",
     "dev": "serverless invoke local --function handler",
     "deploy": "cross-env NODE_ENV=production SLS_DEBUG=true serverless deploy",
     "package": "cross-env NODE_ENV=production SLS_DEBUG=true serverless package"
@@ -12,29 +13,30 @@
   "author": "Jordan Hornblow <jordan@jch254.com>",
   "license": "MIT",
   "dependencies": {
-    "@sendgrid/mail": "^8.1.1",
+    "@sendgrid/mail": "^8.1.6",
     "disconnect": "^1.2.2",
     "lodash": "^4.17.21",
-    "node": "^18.20.0",
+    "node": "^18.20.8",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.136",
-    "@types/node": "^20.12.2",
+    "@types/aws-lambda": "^8.10.152",
+    "@types/node": "^20.19.17",
     "@types/webpack": "^5.28.5",
     "@types/webpack-node-externals": "^3.0.4",
     "cross-env": "^7.0.3",
-    "serverless": "^3.38.0",
-    "serverless-offline": "^13.3.3",
-    "serverless-webpack": "^5.13.0",
+    "serverless": "^3.40.0",
+    "serverless-offline": "^13.9.0",
+    "serverless-webpack": "^5.15.3",
     "source-map-loader": "^5.0.0",
-    "ts-loader": "^9.5.1",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
     "tslint": "^5.20.1",
     "tslint-config-airbnb": "^5.11.2",
     "tslint-loader": "^3.5.4",
     "tsutils": "^3.21.0",
-    "typescript": "^5.4.3",
-    "webpack": "^5.91.0",
+    "typescript": "^5.9.2",
+    "webpack": "^5.101.3",
     "webpack-node-externals": "^3.0.0"
   }
 }

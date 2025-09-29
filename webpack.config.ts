@@ -1,25 +1,25 @@
-import path = require("path");
-import slsw = require("serverless-webpack");
-import nodeExternals = require("webpack-node-externals");
+import path = require('path');
+import slsw = require('serverless-webpack');
+import nodeExternals = require('webpack-node-externals');
 
-const srcPath = path.join(__dirname, "src");
-const nodeModulesPath = path.join(__dirname, "node_modules");
+const srcPath = path.join(__dirname, 'src');
+const nodeModulesPath = path.join(__dirname, 'node_modules');
 
 module.exports = {
-  mode: process.env.NODE_ENV === "development" ? "development" : "production",
-  devtool: "cheap-module-source-map",
+  mode: process.env.NODE_ENV === 'development' ? 'development' : 'production',
+  devtool: 'cheap-module-source-map',
   entry: slsw.lib.entries,
   output: {
-    libraryTarget: "commonjs",
-    path: path.join(__dirname, ".webpack"),
-    filename: "src/index.js",
+    libraryTarget: 'commonjs',
+    path: path.join(__dirname, '.webpack'),
+    filename: 'src/index.js',
   },
-  target: "node",
+  target: 'node',
   resolve: {
-    extensions: [".ts", ".js", ".json"],
+    extensions: ['.ts', '.js', '.json'],
     modules: [srcPath, nodeModulesPath],
   },
-  externals: ["aws-sdk", nodeExternals()],
+  externals: ['aws-sdk', nodeExternals()],
   module: {
     rules: [
       {
@@ -27,7 +27,7 @@ module.exports = {
         include: srcPath,
         use: [
           {
-            loader: "ts-loader",
+            loader: 'ts-loader',
             options: {
               transpileOnly: true,
               experimentalWatchApi: true,
@@ -37,9 +37,9 @@ module.exports = {
       },
       {
         test: /\.js$/,
-        use: ["source-map-loader"],
+        use: ['source-map-loader'],
         include: srcPath,
-        enforce: "pre",
+        enforce: 'pre',
       },
     ],
   },

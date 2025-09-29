@@ -1,14 +1,14 @@
-import { TransformedListing } from "./interfaces";
+import { TransformedListing } from './interfaces';
 
 // Set DEBUG env var to true to enable debug logging
 export function debugLog(...params: any[]) {
-  if (process.env.DEBUG === "true") {
+  if (process.env.DEBUG === 'true') {
     console.log(...params);
   }
 }
 
 export const transformListing = (
-  listing: UserTypes.Listing
+  listing: UserTypes.Listing,
 ): TransformedListing => {
   return {
     artist: listing.release.artist,
@@ -41,5 +41,5 @@ const getShippingPriceWithCurrency = (listing: UserTypes.Listing) => {
     }`;
   }
 
-  return "TBC";
+  return 'TBC';
 };

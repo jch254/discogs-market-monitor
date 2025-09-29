@@ -1,4 +1,4 @@
-import { EventEmitter } from "./eventEmitter";
+import { EventEmitter } from './eventEmitter';
 
 export class LeakyBucket extends EventEmitter {
   // TODO: Fix any typing
@@ -106,7 +106,7 @@ export class LeakyBucket extends EventEmitter {
   public async throttle(
     cost: number = 1,
     append: boolean = true,
-    isPause: boolean = false
+    isPause: boolean = false,
   ) {
     const maxCurrentCapacity = this.getCurrentMaxCapacity();
 
@@ -115,12 +115,13 @@ export class LeakyBucket extends EventEmitter {
     if (append && this.totalCost + cost > maxCurrentCapacity) {
       if (this.debug) {
         console.log(
-          `Rejecting item because the bucket is over capacity! Current max capacity: ${maxCurrentCapacity}, Total cost of all queued items: ${this.totalCost}, item cost: ${cost}`
+          `Rejecting item because the bucket is over capacity! Current max capacity: ${maxCurrentCapacity}, Total cost of all queued items: ${this.totalCost}, item cost: ${cost}`,
         );
       }
 
       throw new Error(
-        `Cannot throttle item, bucket is overflowing: the maximum capacity is ${maxCurrentCapacity}, the current total capacity is ${this.totalCost}!`
+        `Cannot throttle item, bucket is overflowing: the \
+        maximum capacity is ${maxCurrentCapacity}, the current total capacity is ${this.totalCost}!`,
       );
     }
 
@@ -145,7 +146,7 @@ export class LeakyBucket extends EventEmitter {
 
         if (this.debug) {
           console.log(
-            `Added an item to the start of the queue with the cost of ${cost} to the queue`
+            `Added an item to the start of the queue with the cost of ${cost} to the queue`,
           );
         }
 
@@ -207,7 +208,7 @@ export class LeakyBucket extends EventEmitter {
 
           if (this.debug) {
             console.log(
-              `Waiting ${timeToDelta} for topping up ${requiredDelta} capacity until the next item can be processed ...`
+              `Waiting ${timeToDelta} for topping up ${requiredDelta} capacity until the next item can be processed ...`,
             );
           }
 
@@ -215,7 +216,7 @@ export class LeakyBucket extends EventEmitter {
           this.timer = setTimeout(() => {
             this.timer = 0;
             this.startTimer();
-          }, timeToDelta);
+          },                      timeToDelta);
         }
       } else {
         // Refill the bucket, will start the idle timeout eventually
@@ -236,7 +237,7 @@ export class LeakyBucket extends EventEmitter {
         this.emptyPromiseResolver();
       }
 
-      this.emit("idle", this);
+      this.emit('idle', this);
     }
   }
 
@@ -263,7 +264,7 @@ export class LeakyBucket extends EventEmitter {
    */
   public end() {
     if (this.debug) {
-      console.log(`Ending bucket!`);
+      console.log('Ending bucket!');
     }
 
     this.stopTimer();
@@ -277,7 +278,7 @@ export class LeakyBucket extends EventEmitter {
    */
   private clear() {
     if (this.debug) {
-      console.log(`Resetting queue`);
+      console.log('Resetting queue');
     }
 
     this.queue = [];
@@ -317,7 +318,7 @@ export class LeakyBucket extends EventEmitter {
   private stopTimer() {
     if (this.timer) {
       if (this.debug) {
-        console.log(`Stopping timer`);
+        console.log('Stopping timer');
       }
 
       clearTimeout(this.timer);
@@ -344,7 +345,7 @@ export class LeakyBucket extends EventEmitter {
             this.lastRefill
           }, current Date is ${Date.now()}, diff is ${
             Date.now() - lastRefill
-          } msec`
+          } msec`,
         );
       }
 
@@ -363,7 +364,7 @@ export class LeakyBucket extends EventEmitter {
         this.lastRefill = null;
 
         if (this.debug) {
-          console.log(`Buckets capacity is fully recharged`);
+          console.log('Buckets capacity is fully recharged');
         }
       } else {
         // Date of last refill, used for the next refill
@@ -392,7 +393,7 @@ export class LeakyBucket extends EventEmitter {
     this.refillTimer = setTimeout(() => {
       this.refillTimer = null;
       this.refill();
-    }, timeToDelta + 10);
+    },                            timeToDelta + 10);
   }
 
   /**
@@ -432,8 +433,8 @@ export class LeakyBucket extends EventEmitter {
       !this.timer
     ) {
       this.idleTimer = setTimeout(() => {
-        this.emit("idleTimeout", this);
-      }, this.idleTimeout);
+        this.emit('idleTimeout', this);
+      },                          this.idleTimeout);
     }
   }
 
@@ -467,14 +468,14 @@ export class LeakyBucket extends EventEmitter {
         if (!item.isPause) {
           if (this.debug) {
             console.log(
-              `Rejecting item with a cost of ${item.cost} because an item was added in front of it!`
+              `Rejecting item with a cost of ${item.cost} because an item was added in front of it!`,
             );
           }
 
           item.reject(
             new Error(
-              `Cannot throttle item because an item was added in front of it which caused the queue to overflow!`
-            )
+              'Cannot throttle item because an item was added in front of it which caused the queue to overflow!',
+            ),
           );
 
           this.totalCost -= item.cost;
@@ -489,9 +490,9 @@ export class LeakyBucket extends EventEmitter {
   private getFirstItem() {
     if (this.queue.length > 0) {
       return this.queue[0];
-    } else {
-      return null;
     }
+    return null;
+
   }
 
   /**
@@ -531,7 +532,7 @@ export class LeakyBucket extends EventEmitter {
   private drain() {
     if (this.debug) {
       console.log(
-        `Draining the bucket, removing ${this.currentCapacity} from it, so that the current capacity is 0`
+        `Draining the bucket, removing ${this.currentCapacity} from it, so that the current capacity is 0`,
       );
     }
 

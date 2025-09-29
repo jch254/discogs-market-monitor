@@ -252,9 +252,9 @@ You must [sign up for/create a Discogs app](https://www.discogs.com/settings/dev
 - **LOG_WANTLIST** (opt) - If true, user's wantlist will be logged to console
 - **DEBUG** (opt) - If true, enables debug logging to console
 
-  **All required environment variables above must be set before `yarn run dev` command. These can also be set via a .env file.**
+  **All required environment variables above must be set before `pnpm run dev` command. These can also be set via a .env file.**
 
-E.g. `DISCOGS_USER_TOKEN=YOUR_USER_TOKEN SENDGRID_API_KEY=YOUR_API_KEY SENDER_EMAIL=sendgrid@youremail.com yarn run dev --path test.json`
+E.g. `DISCOGS_USER_TOKEN=YOUR_USER_TOKEN SENDGRID_API_KEY=YOUR_API_KEY SENDER_EMAIL=sendgrid@youremail.com pnpm run dev --path test.json`
 
 ### Event variables
 
@@ -275,8 +275,8 @@ An example event file is included in the [test.json](./test.json) file. This sho
 Once the [test.json](./test.json) file has been configured, use the following commands to install and run the monitor.
 
 ```
-yarn install
-yarn run dev --path test.json
+pnpm install
+pnpm run dev --path test.json
 ```
 
 ## Testing

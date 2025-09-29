@@ -10,11 +10,11 @@ To deploy/manage the Serverless service you will need to create an IAM user with
 
 **TODO**
 
-E.g. `yarn run deploy`
+E.g. `pnpm run deploy`
 
 ```bash
-yarn install
-yarn run deploy
+pnpm install
+pnpm run deploy
 ```
 
 ## Supporting Infrastructure/Terraform

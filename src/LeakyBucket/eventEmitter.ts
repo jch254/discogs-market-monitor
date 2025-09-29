@@ -9,7 +9,7 @@ export class EventEmitter {
    * Emit an event
    */
   public emit(event: string, ...args: any[]) {
-    let results = [];
+    const results = [];
 
     if (this.hasListener(event)) {
       const handlerMap = this.getEventHandlers(event);
@@ -65,7 +65,7 @@ export class EventEmitter {
 
     if (handlerMap?.has(handler)) {
       throw new Error(
-        `Cannot register the same event handler for ${event} twice!`
+        `Cannot register the same event handler for ${event} twice!`,
       );
     }
 

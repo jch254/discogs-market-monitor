@@ -1,5 +1,5 @@
-import Parser from "rss-parser";
-import { ScheduledEvent } from "aws-lambda";
+import { ScheduledEvent } from 'aws-lambda';
+import Parser from 'rss-parser';
 
 export interface DiscogsUserWantlistMarketplaceItem {
   title: string;
