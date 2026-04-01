@@ -12,7 +12,7 @@ Discogs Wantlist Marketplace Monitor powered by Serverless, TypeScript, Webpack 
 - [Webpack](https://github.com/webpack/webpack)
 - [Serverless-webpack](https://github.com/elastic-coders/serverless-webpack)
 - [Disconnect](https://github.com/bartve/disconnect)
-- [@sendgrid/mail](https://github.com/sendgrid/sendgrid-nodejs/tree/main/packages/mail)
+- [Resend](https://github.com/resendlabs/resend-node)
 
 ## Example email digest
 
@@ -240,21 +240,21 @@ Discogs Wantlist Marketplace Monitor powered by Serverless, TypeScript, Webpack 
 
 ## Prerequisites
 
-You must [sign up for/create a Discogs app](https://www.discogs.com/settings/developers) to obtain the Discogs authentication variables required below. You must [create a Sendgrid account](https://sendgrid.com/pricing/) to obtain the SendGrid authentication variable required below. I went with the SendGrid free tier.
+You must [sign up for/create a Discogs app](https://www.discogs.com/settings/developers) to obtain the Discogs authentication variables required below. You must [create a Resend account](https://resend.com/) to obtain the Resend authentication variable required below.
 
 ## Running locally
 
 ### Environment variables
 
 - **DISCOGS_CONSUMER_KEY/DISCOGS_CONSUMER_SECRET** OR **DISCOGS_USER_TOKEN** (req - see [Discogs API documentation](http://www.discogs.com/developers/#page:authentication) for more info) - Auth for Discogs app
-- **SENDGRID_API_KEY** (req) - Auth for SendGrid account
-- **SENDER_EMAIL** (req) - Email address to send digest from via SendGrid (must be configured via SendGrid)
+- **RESEND_API_KEY** (req) - Auth for Resend account
+- **SENDER_EMAIL** (req) - Email address to send digest from via Resend (domain must be verified in Resend)
 - **LOG_WANTLIST** (opt) - If true, user's wantlist will be logged to console
 - **DEBUG** (opt) - If true, enables debug logging to console
 
   **All required environment variables above must be set before `pnpm run dev` command. These can also be set via a .env file.**
 
-E.g. `DISCOGS_USER_TOKEN=YOUR_USER_TOKEN SENDGRID_API_KEY=YOUR_API_KEY SENDER_EMAIL=sendgrid@youremail.com pnpm run dev --path test.json`
+E.g. `DISCOGS_USER_TOKEN=YOUR_USER_TOKEN RESEND_API_KEY=YOUR_API_KEY SENDER_EMAIL=you@yourdomain.com pnpm run dev --path test.json`
 
 ### Event variables
 

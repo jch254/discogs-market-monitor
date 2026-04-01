@@ -1,5 +1,5 @@
 import { Context } from 'aws-lambda';
-import * as Parser from 'rss-parser';
+import Parser from 'rss-parser';
 import { sendWantlistEmail } from './emailClient';
 import {
   DiscogsUserWantlistMarketplaceItem,

@@ -1,22 +1,11 @@
+org: jch254
+app: discogs-market-monitor
 service: discogs-market-monitor
 
-frameworkVersion: "2 || 3"
-
-useDotenv: true
-
-plugins:
-  - serverless-webpack
+frameworkVersion: "4"
 
 package:
   individually: true
-
-custom:
-  webpack:
-    webpackConfig: ./webpack.config.ts
-    packager: "pnpm"
-    includeModules:
-      forceExclude:
-        - aws-sdk
 
 provider:
   name: aws
@@ -30,6 +19,6 @@ functions:
     memorySize: 256
     timeout: 900
     environment:
-      DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token}
-      SENDGRID_API_KEY: ${ssm:/discogs-market-monitor/sendgrid_api_key}
-      SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email}
+      DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token, env:DISCOGS_USER_TOKEN, ''}
+      RESEND_API_KEY: ${ssm:/discogs-market-monitor/resend_api_key, env:RESEND_API_KEY, ''}
+      SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email, env:SENDER_EMAIL, ''}
