@@ -5,7 +5,6 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
-  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 
 // Monitor: a user-registered subscription describing one wantlist marketplace
@@ -19,9 +18,6 @@ const MONITOR_PK = 'MONITOR';
 
 const sk = (username: string) => `MONITOR#${username.toLowerCase()}`;
 
-// Default dispatch cadence (hours) when a monitor doesn't specify one.
-export const DEFAULT_FREQUENCY_HOURS = 12;
-
 export interface Monitor {
   username: string;
   shipsFrom: string; // Multiple supported - comma separated
@@ -30,12 +26,6 @@ export interface Monitor {
   // private wantlist; public wantlists work without it (falls back to the
   // shared service token).
   discogsToken?: string;
-  // How often (in hours) the scheduled dispatcher should start a run for this
-  // user. Honoured against `lastDispatchedAt`; the effective minimum is the
-  // deployment-level dispatcher schedule rate.
-  frequencyHours: number;
-  // ISO timestamp of the last run the dispatcher started for this monitor.
-  lastDispatchedAt?: string;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -62,7 +52,6 @@ export const putMonitor = async (input: {
   shipsFrom: string;
   destinationEmail: string;
   discogsToken?: string;
-  frequencyHours?: number;
   enabled?: boolean;
 }): Promise<Monitor> => {
   const existing = await getMonitor(input.username);
@@ -73,9 +62,6 @@ export const putMonitor = async (input: {
     shipsFrom: input.shipsFrom,
     destinationEmail: input.destinationEmail,
     discogsToken: input.discogsToken,
-    frequencyHours:
-      input.frequencyHours ?? existing?.frequencyHours ?? DEFAULT_FREQUENCY_HOURS,
-    lastDispatchedAt: existing?.lastDispatchedAt,
     enabled: input.enabled ?? existing?.enabled ?? true,
     createdAt: existing?.createdAt ?? nowIso,
     updatedAt: nowIso,
@@ -148,26 +134,6 @@ export const deleteMonitor = async (username: string): Promise<void> => {
     new DeleteCommand({
       TableName: TABLE_NAME,
       Key: { PK: MONITOR_PK, SK: sk(username) },
-    }),
-  );
-};
-
-// Records that the dispatcher just started a run for this monitor, so the next
-// schedule tick can decide whether the user is due again based on frequency.
-export const markDispatched = async (
-  username: string,
-  when: string = new Date().toISOString(),
-): Promise<void> => {
-  if (!isMonitorStoreEnabled()) {
-    return;
-  }
-
-  await getDocClient().send(
-    new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: MONITOR_PK, SK: sk(username) },
-      UpdateExpression: 'SET lastDispatchedAt = :ts',
-      ExpressionAttributeValues: { ':ts': when },
     }),
   );
 };

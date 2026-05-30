@@ -63,15 +63,17 @@ export default function MonitorForm() {
     setResult(null);
   };
 
-  const validate = (): string[] => {
+  const validate = (action: Mode | 'oauth'): string[] => {
     const errors: string[] = [];
     const username = form.username.trim();
 
-    if (!USERNAME_RE.test(username)) {
-      errors.push('Enter a valid Discogs username.');
+    if (action === 'register' || action === 'unsubscribe') {
+      if (!USERNAME_RE.test(username)) {
+        errors.push('Enter a valid Discogs username.');
+      }
     }
 
-    if (mode === 'register') {
+    if (action === 'register' || action === 'oauth') {
       if (!form.shipsFrom.trim()) {
         errors.push('Enter at least one country to watch.');
       }
@@ -81,6 +83,37 @@ export default function MonitorForm() {
     }
 
     return errors;
+  };
+
+  // Kicks off the server-side Discogs OAuth flow. Username is derived from the
+  // authenticated Discogs identity, so only the digest context is needed here;
+  // we hand off to `/oauth/start`, which redirects to Discogs to authorise.
+  const startOAuth = () => {
+    setStatus(null);
+    setResult(null);
+
+    if (!API_BASE) {
+      setStatus({
+        kind: 'error',
+        message: 'This site is not configured with an API endpoint yet.',
+        details: ['Set PUBLIC_API_BASE_URL at build time and redeploy.'],
+      });
+      return;
+    }
+
+    const errors = validate('oauth');
+    if (errors.length > 0) {
+      setStatus({ kind: 'error', message: 'Please fix the following:', details: errors });
+      return;
+    }
+
+    const params = new URLSearchParams({
+      destinationEmail: form.destinationEmail.trim(),
+      shipsFrom: form.shipsFrom.trim(),
+      frequencyHours: form.frequencyHours,
+    });
+
+    window.location.href = `${API_BASE}/oauth/start?${params.toString()}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +130,7 @@ export default function MonitorForm() {
       return;
     }
 
-    const errors = validate();
+    const errors = validate(mode);
     if (errors.length > 0) {
       setStatus({ kind: 'error', message: 'Please fix the following:', details: errors });
       return;
@@ -185,23 +218,6 @@ export default function MonitorForm() {
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        <div>
-          <label htmlFor="username" className="field-label">
-            Discogs username
-          </label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            autoComplete="username"
-            placeholder="your_discogs_username"
-            className="field-input"
-            value={form.username}
-            onChange={update('username')}
-          />
-          <p className="field-hint">The account whose wantlist is scanned.</p>
-        </div>
-
         {mode === 'register' && (
           <>
             <div>
@@ -263,6 +279,50 @@ export default function MonitorForm() {
             </div>
 
             <div>
+              <button
+                type="button"
+                onClick={startOAuth}
+                disabled={submitting}
+                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-brand-accent px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-brand-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Connect with Discogs
+                <span className="transition group-hover:translate-x-0.5">→</span>
+              </button>
+              <p className="field-hint">
+                Recommended. You’ll authorise on Discogs — no token to copy, and it
+                works with <strong>private</strong> wantlists. Your username is
+                detected automatically.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="h-px flex-1 bg-brand-border" />
+              <span className="text-xs font-medium uppercase tracking-wide text-brand-muted">
+                or use a token
+              </span>
+              <span className="h-px flex-1 bg-brand-border" />
+            </div>
+
+            <div>
+              <label htmlFor="username" className="field-label">
+                Discogs username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                placeholder="your_discogs_username"
+                className="field-input"
+                value={form.username}
+                onChange={update('username')}
+              />
+              <p className="field-hint">
+                The account whose wantlist is scanned. Required for the token option.
+              </p>
+            </div>
+
+            <div>
               <label htmlFor="discogsToken" className="field-label">
                 Discogs token{' '}
                 <span className="font-normal text-brand-muted">(optional)</span>
@@ -278,8 +338,8 @@ export default function MonitorForm() {
                 onChange={update('discogsToken')}
               />
               <p className="field-hint">
-                Only needed to read a <strong>private</strong> wantlist. Stored
-                securely and never shown back to you.{' '}
+                Only needed to read a <strong>private</strong> wantlist without
+                connecting. Stored securely and never shown back to you.{' '}
                 <a
                   href="https://www.discogs.com/settings/developers"
                   target="_blank"
@@ -291,6 +351,25 @@ export default function MonitorForm() {
               </p>
             </div>
           </>
+        )}
+
+        {mode === 'unsubscribe' && (
+          <div>
+            <label htmlFor="username" className="field-label">
+              Discogs username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              placeholder="your_discogs_username"
+              className="field-input"
+              value={form.username}
+              onChange={update('username')}
+            />
+            <p className="field-hint">The monitor to remove.</p>
+          </div>
         )}
 
         {status && (
@@ -334,12 +413,12 @@ export default function MonitorForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="group flex w-full items-center justify-center gap-2 rounded-xl bg-brand-accent px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-brand-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="group flex w-full items-center justify-center gap-2 rounded-xl border border-brand-border bg-brand-bg/50 px-5 py-3.5 text-sm font-semibold text-brand-text transition hover:bg-brand-bg disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting
             ? 'Working…'
             : mode === 'register'
-              ? 'Start monitoring'
+              ? 'Register with token'
               : 'Remove my monitor'}
           {!submitting && (
             <span className="transition group-hover:translate-x-0.5">→</span>

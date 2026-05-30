@@ -14,11 +14,6 @@ export interface TransformedListing {
   format: string;
   title: string;
   year: number;
-  // Cover art thumbnail URL and Discogs release id, used to render a rich
-  // digest email (image + release link). Optional for backwards compatibility
-  // with rows persisted before these fields existed.
-  thumbnail?: string;
-  releaseId?: number;
 }
 
 export interface MarketMonitorEvent extends ScheduledEvent {
@@ -28,10 +23,6 @@ export interface MarketMonitorEvent extends ScheduledEvent {
   // Optional per-user Discogs personal access token, supplied at signup. Used
   // to read a private wantlist; falls back to the shared service token.
   discogsToken?: string;
-  // Optional per-user Discogs OAuth 1.0a access token + secret, obtained via
-  // the OAuth flow. Preferred over discogsToken when present.
-  discogsOAuthToken?: string;
-  discogsOAuthTokenSecret?: string;
 }
 
 // One unit of work in the Step Functions Distributed Map: a single
