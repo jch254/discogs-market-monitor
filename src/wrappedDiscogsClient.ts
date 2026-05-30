@@ -1,9 +1,9 @@
 import { Client as DiscogsClient } from 'disconnect';
 import { sleep, withRetry, THROTTLE_MS } from './throttle';
 
-export const getDiscogsClient = () => {
-  const USER_AGENT = 'MarketMonitor/1.0';
+export const USER_AGENT = 'MarketMonitor/1.0';
 
+export const getDiscogsClient = () => {
   let discogsClient: DiscogsClient;
 
   if (process.env.DISCOGS_USER_TOKEN) {
@@ -33,7 +33,51 @@ export const getDiscogsClientForToken = (token?: string) => {
     return getDiscogsClient();
   }
 
-  return new DiscogsClient('MarketMonitor/1.0', { userToken: token });
+  return new DiscogsClient(USER_AGENT, { userToken: token });
+};
+
+// Builds a client that acts on behalf of a user who completed the OAuth 1.0a
+// flow. Each request is signed with the app's consumer key/secret plus the
+// user's access token/secret obtained at authorisation time.
+export const getDiscogsClientForOAuth = (
+  token: string,
+  tokenSecret: string,
+) => {
+  const consumerKey = process.env.DISCOGS_CONSUMER_KEY;
+  const consumerSecret = process.env.DISCOGS_CONSUMER_SECRET;
+
+  if (!consumerKey || !consumerSecret) {
+    throw new Error(
+      'DISCOGS_CONSUMER_KEY and DISCOGS_CONSUMER_SECRET must be set to use OAuth access tokens',
+    );
+  }
+
+  return new DiscogsClient(USER_AGENT, {
+    method: 'oauth',
+    consumerKey,
+    consumerSecret,
+    token,
+    tokenSecret,
+    level: 2,
+  });
+};
+
+// Resolves the right client for a registered monitor. Prefers OAuth access
+// tokens (full 3-legged auth), then a personal access token, then the shared
+// service client for public wantlists.
+export const getDiscogsClientForMonitor = (auth: {
+  discogsToken?: string;
+  discogsOAuthToken?: string;
+  discogsOAuthTokenSecret?: string;
+}) => {
+  if (auth.discogsOAuthToken && auth.discogsOAuthTokenSecret) {
+    return getDiscogsClientForOAuth(
+      auth.discogsOAuthToken,
+      auth.discogsOAuthTokenSecret,
+    );
+  }
+
+  return getDiscogsClientForToken(auth.discogsToken);
 };
 
 export const getUserWantlist = async (

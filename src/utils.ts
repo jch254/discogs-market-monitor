@@ -39,6 +39,8 @@ export const transformListing = (
     format: listing.release.format,
     year: listing.release.year,
     shipsFrom: listing.ships_from,
+    thumbnail: listing.release.thumbnail,
+    releaseId: listing.release.id,
   };
 };
 

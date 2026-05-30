@@ -28,6 +28,11 @@ provider:
     # entities later under distinct key prefixes.
     DYNAMODB_TABLE: ${self:service}-entities
     DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token, env:DISCOGS_USER_TOKEN, ''}
+    # App-level Discogs OAuth 1.0a credentials. Required for the self-service
+    # OAuth flow (src/oauthFlow.ts) and to sign API calls for users who
+    # authorised via OAuth.
+    DISCOGS_CONSUMER_KEY: ${ssm:/discogs-market-monitor/discogs_consumer_key, env:DISCOGS_CONSUMER_KEY, ''}
+    DISCOGS_CONSUMER_SECRET: ${ssm:/discogs-market-monitor/discogs_consumer_secret, env:DISCOGS_CONSUMER_SECRET, ''}
     RESEND_API_KEY: ${ssm:/discogs-market-monitor/resend_api_key, env:RESEND_API_KEY, ''}
     SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email, env:SENDER_EMAIL, ''}
   iam:
@@ -63,6 +68,21 @@ functions:
       - httpApi:
           path: /monitors/{username}
           method: delete
+
+  # Self-service Discogs OAuth 1.0a flow. /oauth/start redirects the user to
+  # Discogs to authorise; /oauth/callback exchanges the request token for a
+  # long-lived access token and registers the monitor.
+  oauthFlow:
+    handler: src/oauthFlow.handler
+    memorySize: 256
+    timeout: 30
+    events:
+      - httpApi:
+          path: /oauth/start
+          method: get
+      - httpApi:
+          path: /oauth/callback
+          method: get
 
   # Scheduled fan-out: lists registered monitors and starts one workflow
   # execution per user (replaces the old single-user schedule).

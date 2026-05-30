@@ -1,14 +1,12 @@
 import { Resend } from 'resend';
-import { upperFirst } from 'lodash';
+import {
+  buildDigestHtml,
+  buildDigestText,
+  formatShipsFrom,
+} from './digestEmailTemplate';
 import { TransformedListing } from './interfaces';
 
 let resend: Resend;
-
-const formatShipsFrom = (shipsFrom: string) =>
-  shipsFrom
-    .split(',')
-    .map(s => upperFirst(s.trim()))
-    .join(', ');
 
 const getResendClient = () => {
   if (!resend) {
@@ -32,7 +30,8 @@ export const sendWantlistDigestEmail = async (
       subject: `Discogs Wantlist Digest for ${username} shipping from ${formatShipsFrom(
         shipsFrom,
       )}`,
-      text: JSON.stringify(listings, undefined, 2),
+      html: buildDigestHtml(username, shipsFrom, listings),
+      text: buildDigestText(username, shipsFrom, listings),
     });
   } catch (error: any) {
     console.error(error);
