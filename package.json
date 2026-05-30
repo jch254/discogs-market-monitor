@@ -13,6 +13,8 @@
   "author": "Jordan Hornblow <jordan@jch254.com>",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1057.0",
+    "@aws-sdk/lib-dynamodb": "^3.1057.0",
     "disconnect": "^1.2.2",
     "lodash": "^4.17.23",
     "node": "^25.8.2",
