@@ -30,18 +30,13 @@ provider:
           Action:
             - dynamodb:GetItem
             - dynamodb:PutItem
+            - dynamodb:UpdateItem
             - dynamodb:Query
           Resource:
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-entities
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-entities/index/*
 
 functions:
-  # Legacy single-Lambda batch path. Retained for rollback; retired in Phase 3.
-  handler:
-    handler: src/index.handler
-    memorySize: 256
-    timeout: 900
-
   # Step Functions workflow Lambdas.
   getWantlist:
     handler: src/getWantlist.handler

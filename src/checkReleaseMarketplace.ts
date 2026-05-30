@@ -1,5 +1,6 @@
 import { Context } from 'aws-lambda';
-import { CheckReleaseResult, TransformedListing, WantlistReleaseTask } from './interfaces';
+import { CheckReleaseResult, WantlistReleaseTask } from './interfaces';
+import { recordNewListing } from './marketplaceListingStateRepository';
 import { getReleaseListingIds } from './marketplaceRss';
 import {
   getReleaseCheckState,
@@ -38,7 +39,7 @@ export async function handler(
     newCount: newListingIds.length,
   });
 
-  const newListings: TransformedListing[] = [];
+  let newListingCount = 0;
   let currentRequest = 1;
 
   for (const id of newListingIds) {
@@ -53,7 +54,18 @@ export async function handler(
         shipsFromList.length === 0 ||
         shipsFromList.includes(listing.ships_from.toLowerCase())
       ) {
-        newListings.push(transformListing(listing));
+        // Write to the notification ledger (un-notified). The conditional put
+        // makes this idempotent, so retries never queue a duplicate digest.
+        const recorded = await recordNewListing({
+          userId,
+          listingId: id,
+          releaseId,
+          listing: transformListing(listing),
+        });
+
+        if (recorded) {
+          newListingCount += 1;
+        }
       }
     } catch (error: any) {
       console.log('FAILED TO FETCH NEW MARKETPLACE LISTING IN WORKER', {
@@ -67,12 +79,12 @@ export async function handler(
   }
 
   // Persist the full current id set last so a retry of this release sees no new
-  // ids. Results are already captured by Step Functions for the digest step.
+  // ids to re-fetch.
   await putReleaseCheckState({
     userId,
     releaseId,
     lastSeenListingIds: currentListingIds,
   });
 
-  return { releaseId, title, newListings };
+  return { releaseId, title, newListingCount };
 }

@@ -1,8 +1,5 @@
 import { Client as DiscogsClient } from 'disconnect';
-import { uniq } from 'lodash';
-import { DiscogsUserWantlistMarketplaceItem } from './interfaces';
 import { sleep, withRetry, THROTTLE_MS } from './throttle';
-import { extractMarketplaceListingIds } from './utils';
 
 export const getDiscogsClient = () => {
   const USER_AGENT = 'MarketMonitor/1.0';
@@ -61,48 +58,6 @@ export const getUserWantlist = async (
   }
 
   return { wantlistReleases, requestCount: totalPages };
-};
-
-export const getMarketplaceListings = async (
-  discogsClient: DiscogsClient,
-  wantlistMarketplaceItems: DiscogsUserWantlistMarketplaceItem[],
-) => {
-  const marketplaceListingIds: string[] = uniq(
-    wantlistMarketplaceItems.flatMap(item =>
-      extractMarketplaceListingIds(item.marketplaceItems),
-    ),
-  );
-
-  let currentRequest = 1;
-  const listings: UserTypes.Listing[] = [];
-
-  // Sequential processing with a fixed throttle between calls. No Promise.all /
-  // uncontrolled parallel fan-out. Each listing is isolated so one failure does
-  // not abort the whole batch.
-  for (const id of marketplaceListingIds) {
-    await sleep(THROTTLE_MS);
-
-    try {
-      const listing = await getMarketplaceListing(
-        discogsClient,
-        id,
-        currentRequest,
-      );
-
-      listings.push(listing);
-    } catch (error: any) {
-      console.log('FAILED TO FETCH DISCOGS MARKETPLACE LISTING', {
-        id,
-        currentRequest,
-        statusCode: error?.statusCode,
-        message: error?.message,
-      });
-    } finally {
-      currentRequest += 1;
-    }
-  }
-
-  return listings;
 };
 
 export const getMarketplaceListing = async (

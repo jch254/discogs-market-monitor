@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "tslint --project tsconfig.json || exit 0",
     "lint:fix": "tslint --project tsconfig.json --fix || exit 0",
-    "dev": "serverless invoke local --function handler",
+    "dev": "serverless invoke local --function getWantlist --path test.json",
     "deploy": "cross-env NODE_ENV=production serverless deploy",
     "package": "cross-env NODE_ENV=production serverless package"
   },
