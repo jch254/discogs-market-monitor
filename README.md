@@ -12,7 +12,9 @@ It is multi-tenant: anyone can self-register their own monitor via a small HTTP 
 
 The deployed service exposes an HTTP API so users can set up their own monitor without touching infrastructure or SSM parameters.
 
-Register (or update) a monitor:
+The easiest way to sign up is the web UI at [603.nz](https://603.nz) — a small Astro + Tailwind static site (in [/frontend](./frontend)) wired to the API below. It is hosted on S3 and fronted by Cloudflare; see [/frontend/infrastructure](./frontend/infrastructure) for the deployment.
+
+Prefer the API directly? Register (or update) a monitor:
 
 ```bash
 curl -X POST https://<your-api-host>/monitors \
@@ -52,6 +54,7 @@ After Serverless deploys, the API host is printed in the stack outputs (the `htt
 - [Node.js](https://github.com/nodejs/node)
 - [Disconnect](https://github.com/bartve/disconnect)
 - [Resend](https://github.com/resendlabs/resend-node)
+- [Astro](https://astro.build) + [Tailwind CSS](https://tailwindcss.com) + [React](https://react.dev) (signup web UI in [/frontend](./frontend), hosted on S3 + Cloudflare)
 
 ## Architecture
 

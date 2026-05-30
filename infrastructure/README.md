@@ -2,6 +2,8 @@
 
 This project is built, tested and deployed to AWS by CodeBuild. There are two components to deploy - the Serverless service and all supporting infrastructure which is defined with Terraform (CodeBuild, Route53, CloudFront etc.).
 
+> The signup web UI is a separate static site with its own Terraform stack (S3 + Cloudflare + CodeBuild). See [/frontend/infrastructure](../frontend/infrastructure) for that deployment.
+
 I've created Docker-powered build/deployment environments for [Serverless projects](https://github.com/jch254/docker-node-serverless) and [Node projects](https://github.com/jch254/docker-node-terraform-aws) to use with AWS CodeBuild and Bitbucket Pipelines.
 
 ## Serverless Service
