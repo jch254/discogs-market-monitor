@@ -2,17 +2,57 @@
 
 ![Build Status](https://codebuild.ap-southeast-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiUDhXeDRQQlY5UXRDRDY1RHVDSm5sK1d6TEp0UDR0QTl3QXE4V0NoZkZKZFZ6SVp3WUJBSFVtdW9iMm5CQlVzbVl5b2hHZi8zUEptZGMzdmo3b0JOcHlZPSIsIml2UGFyYW1ldGVyU3BlYyI6Inh5aTgyT0NBa2VnVmxtVFkiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
 
-Discogs Wantlist Marketplace Monitor powered by Serverless, TypeScript, Webpack and Node.js. The monitor scans the Discogs Marketplace for listings from the specified user's wantlist in the specified countries and sends a digest email of all matching listings to the specified email address. It runs as an AWS Lambda function (scheduled every twelve hours). This saves manually searching through your wantlist for local listings.
+Discogs Wantlist Marketplace Monitor powered by Serverless, Step Functions, TypeScript and Node.js. The monitor scans the Discogs Marketplace for listings from the specified user's wantlist in the specified countries and sends a digest email of all matching listings to the specified email address. It runs as an AWS Step Functions workflow (scheduled every twelve hours via EventBridge). This saves manually searching through your wantlist for local listings.
+
+Processing is incremental and rate-limit-safe: each release is checked independently, results are deduped in DynamoDB, and only newly-seen listings are emailed.
 
 ## Technologies Used
 
 - [Serverless](https://github.com/serverless/serverless)
+- [Serverless Step Functions](https://github.com/serverless-operations/serverless-step-functions)
+- [AWS Step Functions](https://aws.amazon.com/step-functions/) (Distributed Map)
+- [Amazon DynamoDB](https://aws.amazon.com/dynamodb/)
 - [TypeScript](https://github.com/microsoft/typescript)
 - [Node.js](https://github.com/nodejs/node)
-- [Webpack](https://github.com/webpack/webpack)
-- [Serverless-webpack](https://github.com/elastic-coders/serverless-webpack)
 - [Disconnect](https://github.com/bartve/disconnect)
 - [Resend](https://github.com/resendlabs/resend-node)
+
+## Architecture
+
+An EventBridge schedule starts a Step Functions state machine every twelve hours. The unit of work is a single `(userId, releaseId)`, not the whole wantlist, so execution scales linearly and never times out.
+
+```
+EventBridge (rate: 12h)
+        │  input: { username, shipsFrom, destinationEmail }
+        ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Step Functions state machine                                 │
+│                                                              │
+│  GetWantlist ──► Map (DISTRIBUTED, MaxConcurrency 2) ──► SendDigest
+│  (one task         │  CheckReleaseMarketplace                │
+│   per release)     │  · RSS-enumerate current listing ids    │
+│                    │  · fetch only NEW ids via Discogs API   │
+│                    │  · filter shipsFrom                      │
+│                    │  · record new matches (un-notified)     │
+│                    │  Retry: 429 → exponential backoff       │
+└─────────────────────────────────────────────────────────────┘
+        │                                       │
+        ▼                                       ▼
+  DynamoDB (single table)              Resend (one digest email
+  · ReleaseCheckState                   of un-notified listings,
+    PK USER#<id> SK RELEASE#<id>        then marks them notified)
+  · MarketplaceListingState
+    PK USER#<id> SK LISTING#<id>
+```
+
+Key properties:
+
+- **Rate-limit safe** — low Map concurrency plus a fixed throttle and jittered exponential backoff on Discogs `429`s; failures are isolated per release so one bad release never fails the run.
+- **Incremental** — `ReleaseCheckState` skips releases checked within the last hour and tracks seen listing ids, so each run only fetches genuinely new listings.
+- **Idempotent** — new listings are written to `MarketplaceListingState` with a conditional put; `SendDigest` emails un-notified rows then marks them notified, so retries never duplicate or drop a digest.
+- **Unchanged UX** — still one aggregated digest email per run (now containing only newly-seen listings).
+
+The DynamoDB table is provisioned in [/infrastructure](./infrastructure) via the shared `dynamodb-single-table` module; the Lambdas and state machine are deployed with the Serverless Framework.
 
 ## Example email digest
 
@@ -249,7 +289,10 @@ You must [sign up for/create a Discogs app](https://www.discogs.com/settings/dev
 - **DISCOGS_CONSUMER_KEY/DISCOGS_CONSUMER_SECRET** OR **DISCOGS_USER_TOKEN** (req - see [Discogs API documentation](http://www.discogs.com/developers/#page:authentication) for more info) - Auth for Discogs app
 - **RESEND_API_KEY** (req) - Auth for Resend account
 - **SENDER_EMAIL** (req) - Email address to send digest from via Resend (domain must be verified in Resend)
-- **LOG_WANTLIST** (opt) - If true, user's wantlist will be logged to console
+- **DYNAMODB_TABLE** (opt) - Single-table name for state. Set automatically when deployed; when unset (e.g. local dev) state is skipped and every release is re-checked
+- **DISCOGS_THROTTLE_MS** (opt, default `1100`) - Fixed delay between external Discogs calls
+- **RECENTLY_CHECKED_MS** (opt, default `3600000`) - Releases checked more recently than this are skipped
+- **STATE_TTL_MS** / **LISTING_TTL_MS** (opt, default 30 days) - TTL for `ReleaseCheckState` / `MarketplaceListingState` rows
 - **DEBUG** (opt) - If true, enables debug logging to console
 
   **All required environment variables above must be set before `pnpm run dev` command. These can also be set via a .env file.**
@@ -258,7 +301,7 @@ E.g. `DISCOGS_USER_TOKEN=YOUR_USER_TOKEN RESEND_API_KEY=YOUR_API_KEY SENDER_EMAI
 
 ### Event variables
 
-Discogs Wantlist Marketplace Monitor is designed to be run on a schedule via AWS Lambda meaning the event object passed to the handler function is of ScheduledEvent type. The event object is used to pass data into the handler function - see the [MarketMonitorEvent interface](/src/interfaces.ts) for definition.
+Discogs Wantlist Marketplace Monitor is designed to be run on a schedule. The EventBridge schedule input (or the `test.json` payload locally) is passed to the `GetWantlist` Lambda that starts the workflow - see the [MarketMonitorEvent interface](/src/interfaces.ts) for definition.
 
 #### Example MarketMonitorEvent file/object
 
@@ -285,4 +328,19 @@ TBC
 
 ## Deployment/Infrastructure
 
-Refer to the [/infrastructure](./infrastructure) directory.
+Refer to the [/infrastructure](./infrastructure) directory for the Terraform that provisions the CodeBuild CI/CD pipeline and the DynamoDB single table. The Lambdas and Step Functions state machine are deployed with the Serverless Framework (`pnpm run deploy`).
+
+In production the EventBridge schedule reads its input from SSM Parameter Store, so set these before the first scheduled run:
+
+- `/discogs-market-monitor/username`
+- `/discogs-market-monitor/ships_from`
+- `/discogs-market-monitor/destination_email`
+
+(plus the existing `discogs_user_token`, `resend_api_key` and `sender_email` parameters).
+
+### Migration order
+
+1. `terraform apply` in [/infrastructure](./infrastructure) to create/update the DynamoDB table (and CI role permissions).
+2. `pnpm run deploy` to deploy the Lambdas and state machine.
+
+The first scheduled run starts with empty state, so it behaves like the original full scan (every current matching listing is "new" and included in one digest). Subsequent runs only surface newly-seen listings.
