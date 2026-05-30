@@ -84,6 +84,8 @@ export async function handler(_event: unknown, _context: Context) {
             shipsFrom: monitor.shipsFrom,
             destinationEmail: monitor.destinationEmail,
             discogsToken: monitor.discogsToken,
+            discogsOAuthToken: monitor.discogsOAuthToken,
+            discogsOAuthTokenSecret: monitor.discogsOAuthTokenSecret,
           }),
         }),
       );
