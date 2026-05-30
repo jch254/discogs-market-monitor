@@ -1,8 +1,15 @@
 import { Resend } from 'resend';
 import { upperFirst } from 'lodash';
+import { TransformedListing } from './interfaces';
 import { transformListing } from './utils';
 
 let resend: Resend;
+
+const formatShipsFrom = (shipsFrom: string) =>
+  shipsFrom
+    .split(',')
+    .map(s => upperFirst(s.trim()))
+    .join(', ');
 
 const getResendClient = () => {
   if (!resend) {
@@ -17,17 +24,30 @@ export const sendWantlistEmail = async (
   shipsFrom: string,
   listings: UserTypes.Listing[],
 ) => {
-  const shipsFromList = shipsFrom
-    .split(',')
-    .map(s => upperFirst(s.trim()))
-    .join(', ');
+  return sendWantlistDigestEmail(
+    destinationEmail,
+    username,
+    shipsFrom,
+    listings.map(transformListing),
+  );
+};
 
+// Sends the same digest from already-transformed listings (used by the Step
+// Functions SendDigest step, which aggregates per-release worker results).
+export const sendWantlistDigestEmail = async (
+  destinationEmail: string,
+  username: string,
+  shipsFrom: string,
+  listings: TransformedListing[],
+) => {
   try {
     await getResendClient().emails.send({
       to: destinationEmail,
       from: process.env.SENDER_EMAIL || '',
-      subject: `Discogs Wantlist Digest for ${username} shipping from ${shipsFromList}`,
-      text: JSON.stringify(listings.map(transformListing), undefined, 2),
+      subject: `Discogs Wantlist Digest for ${username} shipping from ${formatShipsFrom(
+        shipsFrom,
+      )}`,
+      text: JSON.stringify(listings, undefined, 2),
     });
   } catch (error: any) {
     console.error(error);
