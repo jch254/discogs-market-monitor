@@ -1,0 +1,51 @@
+version: 0.2
+
+# Builds the Discogs Market Monitor frontend and deploys it to S3.
+# Triggered by CodeBuild on pushes to the source branch (see infrastructure/).
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: "ap-southeast-2"
+    REMOTE_STATE_BUCKET: "jch254-terraform-remote-state"
+    TF_STATE_KEY: "discogs-market-monitor-frontend-prod-infrastructure"
+  parameter-store:
+    CLOUDFLARE_API_TOKEN: "/discogs-market-monitor-frontend/cloudflare-api-token"
+
+phases:
+  install:
+    commands:
+      - echo Setting up Terraform plugin cache...
+      - export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"
+      - mkdir -p "$TF_PLUGIN_CACHE_DIR"
+      - echo Installing Node dependencies...
+      - corepack enable
+      - corepack prepare pnpm@10.32.0 --activate
+      - cd frontend
+      - pnpm install --frozen-lockfile
+
+  pre_build:
+    commands:
+      - 'test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 1; }'
+
+  build:
+    on-failure: ABORT
+    commands:
+      - echo Deploying infrastructure...
+      - bash ./infrastructure/deploy-infrastructure.bash
+      # Read the bucket and API base URL the infra just provisioned.
+      - export SITE_BUCKET="$(terraform -chdir=infrastructure/terraform output -raw site_bucket)"
+      - echo Building Astro site...
+      - pnpm run build
+      - test -s dist/index.html || { echo "Build did not produce dist/index.html"; exit 1; }
+
+  post_build:
+    commands:
+      - echo Syncing dist/ to s3://$SITE_BUCKET ...
+      # Long-cache the fingerprinted assets, no-cache the HTML entrypoints.
+      - aws s3 sync dist/ "s3://$SITE_BUCKET" --delete --exclude "*.html" --cache-control "public,max-age=31536000,immutable"
+      - aws s3 sync dist/ "s3://$SITE_BUCKET" --delete --exclude "*" --include "*.html" --cache-control "public,max-age=0,must-revalidate"
+
+cache:
+  paths:
+    - "/root/.terraform.d/plugin-cache/**/*"
+    - "frontend/node_modules/**/*"

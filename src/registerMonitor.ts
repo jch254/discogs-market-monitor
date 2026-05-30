@@ -23,11 +23,17 @@ const json = (
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[A-Za-z0-9._-]{1,60}$/;
 
+// Bounds for the per-user dispatch cadence. The effective minimum in practice
+// is the deployment-level dispatcher schedule rate.
+const MIN_FREQUENCY_HOURS = 1;
+const MAX_FREQUENCY_HOURS = 168; // one week
+
 interface RegisterBody {
   username?: unknown;
   shipsFrom?: unknown;
   destinationEmail?: unknown;
   discogsToken?: unknown;
+  frequencyHours?: unknown;
 }
 
 const isNonEmptyString = (value: unknown): value is string =>
@@ -90,6 +96,24 @@ export async function handler(
     errors.push('discogsToken, when provided, must be a non-empty string');
   }
 
+  let frequencyHours: number | undefined;
+
+  if (body.frequencyHours !== undefined) {
+    const parsed = Number(body.frequencyHours);
+
+    if (
+      !Number.isInteger(parsed) ||
+      parsed < MIN_FREQUENCY_HOURS ||
+      parsed > MAX_FREQUENCY_HOURS
+    ) {
+      errors.push(
+        `frequencyHours, when provided, must be a whole number between ${MIN_FREQUENCY_HOURS} and ${MAX_FREQUENCY_HOURS}`,
+      );
+    } else {
+      frequencyHours = parsed;
+    }
+  }
+
   if (errors.length > 0) {
     return json(400, { message: 'validation failed', errors });
   }
@@ -101,6 +125,7 @@ export async function handler(
     discogsToken: isNonEmptyString(body.discogsToken)
       ? body.discogsToken.trim()
       : undefined,
+    frequencyHours,
   });
 
   // Never echo the stored token back to the caller.

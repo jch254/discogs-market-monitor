@@ -1,0 +1,98 @@
+---
+import Layout from '../layouts/Layout.astro';
+import MonitorForm from '../components/MonitorForm.tsx';
+
+const features = [
+  {
+    title: 'Wantlist aware',
+    body: 'Scans the Discogs Marketplace for every release on your wantlist — no manual searching.',
+  },
+  {
+    title: 'Local listings only',
+    body: 'Filters to the countries you choose, so you only hear about records that ship to you.',
+  },
+  {
+    title: 'One digest, no spam',
+    body: 'Runs on your chosen schedule and emails a single digest of only the newly-seen listings.',
+  },
+];
+---
+
+<Layout>
+  <main class="mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-10 sm:px-8 lg:py-16">
+    <header class="flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2.5 text-sm font-semibold tracking-tight">
+        <span
+          class="flex h-9 w-9 items-center justify-center rounded-full border border-brand-border bg-brand-card text-brand-accent"
+          aria-hidden="true"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"></circle>
+            <circle cx="12" cy="12" r="2.5"></circle>
+          </svg>
+        </span>
+        <span>Wantlist Monitor</span>
+      </a>
+      <a
+        href="https://github.com/jch254/discogs-market-monitor"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-sm text-brand-muted transition hover:text-brand-text"
+      >
+        GitHub ↗
+      </a>
+    </header>
+
+    <div class="grid flex-1 items-center gap-12 py-12 lg:grid-cols-2 lg:gap-16 lg:py-16">
+      <section class="max-w-xl">
+        <span
+          class="inline-flex items-center gap-2 rounded-full border border-brand-border bg-brand-card/60 px-3 py-1 text-xs font-medium text-brand-muted"
+        >
+          <span class="h-1.5 w-1.5 rounded-full bg-brand-accent"></span>
+          Free · self-service · no account needed
+        </span>
+        <h1 class="mt-5 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
+          Catch your grails
+          <span class="text-brand-accent"> the moment they list</span>.
+        </h1>
+        <p class="mt-5 text-lg leading-relaxed text-brand-muted">
+          The Discogs Wantlist Marketplace Monitor watches the marketplace for records
+          on your wantlist and emails you a digest whenever new copies appear shipping
+          from the countries you care about.
+        </p>
+
+        <ul class="mt-8 space-y-4">
+          {
+            features.map((feature) => (
+              <li class="flex gap-3.5">
+                <span
+                  class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent"
+                  aria-hidden="true"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+                <div>
+                  <p class="font-semibold text-brand-text">{feature.title}</p>
+                  <p class="text-sm text-brand-muted">{feature.body}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section id="signup" class="w-full">
+        <MonitorForm client:load />
+      </section>
+    </div>
+
+    <footer class="mt-auto border-t border-brand-border pt-6 text-xs text-brand-muted">
+      <p>
+        Re-registering with the same username updates your settings. The signup
+        endpoint is unauthenticated — be considerate.
+      </p>
+    </footer>
+  </main>
+</Layout>

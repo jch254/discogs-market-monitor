@@ -1,0 +1,38 @@
+/* Tailwind layers */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-brand-bg text-brand-text antialiased;
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(45, 212, 191, 0.13), transparent 45%),
+      radial-gradient(circle at 90% 0%, rgba(56, 189, 248, 0.09), transparent 42%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-brand-text;
+  }
+
+  .field-input {
+    @apply w-full rounded-xl border border-brand-border bg-brand-bg/60 px-4 py-3 text-brand-text
+      placeholder:text-brand-muted/70 transition
+      focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/40 focus:outline-none;
+  }
+
+  .field-hint {
+    @apply mt-1.5 text-xs leading-relaxed text-brand-muted;
+  }
+}
