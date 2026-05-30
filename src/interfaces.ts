@@ -20,6 +20,9 @@ export interface MarketMonitorEvent extends ScheduledEvent {
   destinationEmail: string;
   username: string;
   shipsFrom: string; // Multiple supported - comma separated
+  // Optional per-user Discogs personal access token, supplied at signup. Used
+  // to read a private wantlist; falls back to the shared service token.
+  discogsToken?: string;
 }
 
 // One unit of work in the Step Functions Distributed Map: a single
