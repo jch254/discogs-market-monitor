@@ -5,8 +5,13 @@ import {
   DiscogsUserWantlistMarketplaceItem,
   MarketMonitorEvent,
 } from './interfaces';
+import {
+  getReleaseCheckState,
+  putReleaseCheckState,
+  wasCheckedRecently,
+} from './releaseCheckStateRepository';
 import { sleep, withRetry, THROTTLE_MS } from './throttle';
-import { debugLog } from './utils';
+import { debugLog, extractMarketplaceListingIds } from './utils';
 import {
   getDiscogsClient,
   getMarketplaceListings,
@@ -43,6 +48,7 @@ export async function handler(event: MarketMonitorEvent, _context: Context) {
   }
 
   const wantlistMarketplaceItems = await getWantlistMarketplaceItems(
+    username,
     userWantlist,
   );
 
@@ -95,6 +101,7 @@ export async function handler(event: MarketMonitorEvent, _context: Context) {
 }
 
 const getWantlistMarketplaceItems = async (
+  username: string,
   userWantlist: WantlistTypes.Want[],
 ) => {
   const items: DiscogsUserWantlistMarketplaceItem[] = [];
@@ -103,9 +110,24 @@ const getWantlistMarketplaceItems = async (
   // previous Promise.all fanned out an uncontrolled request per wantlist item,
   // which tripped Discogs rate limiting and timed the Lambda out.
   for (const item of userWantlist) {
+    const releaseId = item.basic_information.id;
     const title = `${item.basic_information.artists
       .map(artist => artist.name)
       .join(', ')} - ${item.basic_information.title}`;
+
+    // Skip releases checked recently to avoid recomputing the full wantlist on
+    // frequent re-runs. On the normal 12h schedule nothing is skipped.
+    const state = await getReleaseCheckState(username, releaseId);
+
+    if (wasCheckedRecently(state)) {
+      debugLog('SKIPPING RECENTLY CHECKED RELEASE', {
+        username,
+        releaseId,
+        lastCheckedAt: state?.lastCheckedAt,
+      });
+
+      continue;
+    }
 
     await sleep(THROTTLE_MS);
 
@@ -113,15 +135,21 @@ const getWantlistMarketplaceItems = async (
       const { items: marketplaceItems } = await withRetry(
         () =>
           parser.parseURL(
-            `https://www.discogs.com/sell/mplistrss?output=rss&&release_id=${item.basic_information.id}`,
+            `https://www.discogs.com/sell/mplistrss?output=rss&&release_id=${releaseId}`,
           ),
-        { label: `rss ${item.basic_information.id}` },
+        { label: `rss ${releaseId}` },
       );
 
       items.push({ title, marketplaceItems });
+
+      await putReleaseCheckState({
+        userId: username,
+        releaseId,
+        lastSeenListingIds: extractMarketplaceListingIds(marketplaceItems),
+      });
     } catch (error: any) {
       console.log('FAILED TO FETCH MARKETPLACE RSS FEED', {
-        releaseId: item.basic_information.id,
+        releaseId,
         title,
         message: error?.message,
       });

@@ -2,6 +2,7 @@ import { Client as DiscogsClient } from 'disconnect';
 import { uniq } from 'lodash';
 import { DiscogsUserWantlistMarketplaceItem } from './interfaces';
 import { sleep, withRetry, THROTTLE_MS } from './throttle';
+import { extractMarketplaceListingIds } from './utils';
 
 export const getDiscogsClient = () => {
   const USER_AGENT = 'MarketMonitor/1.0';
@@ -68,15 +69,9 @@ export const getMarketplaceListings = async (
 ) => {
   const marketplaceListingIds: string[] = uniq(
     wantlistMarketplaceItems.flatMap(item =>
-      item.marketplaceItems.map((marketplaceItem) => {
-        const source = marketplaceItem.link ?? marketplaceItem.id;
-
-        return typeof source === 'string' ? source.split('/').pop() : undefined;
-      }),
+      extractMarketplaceListingIds(item.marketplaceItems),
     ),
-    // Drop undefined/empty values and keep only valid numeric listing ids so
-    // downstream parseInt always receives a usable string.
-  ).filter((id): id is string => typeof id === 'string' && /^\d+$/.test(id));
+  );
 
   let currentRequest = 1;
   const listings: UserTypes.Listing[] = [];
