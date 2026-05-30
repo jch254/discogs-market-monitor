@@ -1,12 +1,4 @@
 import { ScheduledEvent } from 'aws-lambda';
-import Parser from 'rss-parser';
-
-export interface DiscogsUserWantlistMarketplaceItem {
-  title: string;
-  marketplaceItems: ({
-    [key: string]: any;
-  } & Parser.Item)[];
-}
 
 export interface TransformedListing {
   uri: string;
@@ -48,17 +40,19 @@ export interface GetWantlistResult {
   items: WantlistReleaseTask[];
 }
 
-// Output of the CheckReleaseMarketplace worker for one release.
+// Output of the CheckReleaseMarketplace worker for one release. New matching
+// listings are written to MarketplaceListingState, so this is just a summary.
 export interface CheckReleaseResult {
   releaseId: number;
   title: string;
-  newListings: TransformedListing[];
+  newListingCount: number;
 }
 
-// Input to the SendDigest Lambda (GetWantlist output + Map results).
+// Input to the SendDigest Lambda. Notifications are driven by un-notified
+// MarketplaceListingState rows, not by the Map results, so only the user
+// identity/config is required here.
 export interface SendDigestEvent {
   username: string;
   shipsFrom: string;
   destinationEmail: string;
-  results: CheckReleaseResult[];
 }

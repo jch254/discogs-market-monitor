@@ -1,7 +1,6 @@
 import { Resend } from 'resend';
 import { upperFirst } from 'lodash';
 import { TransformedListing } from './interfaces';
-import { transformListing } from './utils';
 
 let resend: Resend;
 
@@ -18,22 +17,8 @@ const getResendClient = () => {
   return resend;
 };
 
-export const sendWantlistEmail = async (
-  destinationEmail: string,
-  username: string,
-  shipsFrom: string,
-  listings: UserTypes.Listing[],
-) => {
-  return sendWantlistDigestEmail(
-    destinationEmail,
-    username,
-    shipsFrom,
-    listings.map(transformListing),
-  );
-};
-
-// Sends the same digest from already-transformed listings (used by the Step
-// Functions SendDigest step, which aggregates per-release worker results).
+// Sends the digest from already-transformed listings. Called by the Step
+// Functions SendDigest step from un-notified MarketplaceListingState rows.
 export const sendWantlistDigestEmail = async (
   destinationEmail: string,
   username: string,
