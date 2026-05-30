@@ -5,6 +5,7 @@ import {
   DiscogsUserWantlistMarketplaceItem,
   MarketMonitorEvent,
 } from './interfaces';
+import { sleep, withRetry, THROTTLE_MS } from './throttle';
 import { debugLog } from './utils';
 import {
   getDiscogsClient,
@@ -96,19 +97,38 @@ export async function handler(event: MarketMonitorEvent, _context: Context) {
 const getWantlistMarketplaceItems = async (
   userWantlist: WantlistTypes.Want[],
 ) => {
-  return await Promise.all(
-    userWantlist.map(async (item) => {
-      const title = `${item.basic_information.artists
-        .map(artist => artist.name)
-        .join(', ')} - ${item.basic_information.title}`;
+  const items: DiscogsUserWantlistMarketplaceItem[] = [];
 
-      const { items: marketplaceItems } = await parser.parseURL(
-        `https://www.discogs.com/sell/mplistrss?output=rss&&release_id=${item.basic_information.id}`,
+  // Sequential processing with a fixed throttle between each RSS fetch. The
+  // previous Promise.all fanned out an uncontrolled request per wantlist item,
+  // which tripped Discogs rate limiting and timed the Lambda out.
+  for (const item of userWantlist) {
+    const title = `${item.basic_information.artists
+      .map(artist => artist.name)
+      .join(', ')} - ${item.basic_information.title}`;
+
+    await sleep(THROTTLE_MS);
+
+    try {
+      const { items: marketplaceItems } = await withRetry(
+        () =>
+          parser.parseURL(
+            `https://www.discogs.com/sell/mplistrss?output=rss&&release_id=${item.basic_information.id}`,
+          ),
+        { label: `rss ${item.basic_information.id}` },
       );
 
-      return { title, marketplaceItems };
-    }),
-  );
+      items.push({ title, marketplaceItems });
+    } catch (error: any) {
+      console.log('FAILED TO FETCH MARKETPLACE RSS FEED', {
+        releaseId: item.basic_information.id,
+        title,
+        message: error?.message,
+      });
+    }
+  }
+
+  return items;
 };
 
 const getShipsFromListings = async (
