@@ -27,6 +27,7 @@
     "cross-env": "^10.1.0",
     "serverless": "^4.33.2",
     "serverless-offline": "^14.5.0",
+    "serverless-step-functions": "^3.30.0",
     "tslint": "^6.1.3",
     "tslint-config-airbnb": "^5.11.2",
     "tsutils": "^3.21.0",

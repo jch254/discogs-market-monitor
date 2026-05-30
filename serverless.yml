@@ -4,6 +4,9 @@ service: discogs-market-monitor
 
 frameworkVersion: "4"
 
+plugins:
+  - serverless-step-functions
+
 package:
   individually: true
 
@@ -17,6 +20,9 @@ provider:
     # dynamodb-single-table module). Holds ReleaseCheckState rows now and other
     # entities later under distinct key prefixes.
     DYNAMODB_TABLE: ${self:service}-entities
+    DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token, env:DISCOGS_USER_TOKEN, ''}
+    RESEND_API_KEY: ${ssm:/discogs-market-monitor/resend_api_key, env:RESEND_API_KEY, ''}
+    SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email, env:SENDER_EMAIL, ''}
   iam:
     role:
       statements:
@@ -30,11 +36,126 @@ provider:
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-entities/index/*
 
 functions:
+  # Legacy single-Lambda batch path. Retained for rollback; retired in Phase 3.
   handler:
     handler: src/index.handler
     memorySize: 256
     timeout: 900
-    environment:
-      DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token, env:DISCOGS_USER_TOKEN, ''}
-      RESEND_API_KEY: ${ssm:/discogs-market-monitor/resend_api_key, env:RESEND_API_KEY, ''}
-      SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email, env:SENDER_EMAIL, ''}
+
+  # Step Functions workflow Lambdas.
+  getWantlist:
+    handler: src/getWantlist.handler
+    memorySize: 256
+    timeout: 300
+
+  checkReleaseMarketplace:
+    handler: src/checkReleaseMarketplace.handler
+    memorySize: 256
+    # Single-release unit of work; targets < 2s but allows headroom for 429 backoff.
+    timeout: 60
+
+  sendDigest:
+    handler: src/sendDigest.handler
+    memorySize: 256
+    timeout: 60
+
+stepFunctions:
+  stateMachines:
+    marketMonitor:
+      name: ${self:service}-market-monitor
+      role:
+        Fn::GetAtt: [MarketMonitorStateMachineRole, Arn]
+      events:
+        # EventBridge schedule replaces the old standalone scheduled Lambda.
+        - schedule:
+            rate:
+              - rate(12 hours)
+            enabled: true
+            input:
+              username: ${ssm:/discogs-market-monitor/username, ''}
+              shipsFrom: ${ssm:/discogs-market-monitor/ships_from, ''}
+              destinationEmail: ${ssm:/discogs-market-monitor/destination_email, ''}
+      definition:
+        Comment: Incremental, rate-limit-safe Discogs wantlist marketplace monitor.
+        StartAt: GetWantlist
+        States:
+          GetWantlist:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [GetWantlistLambdaFunction, Arn]
+            ResultPath: $
+            Next: ProcessReleases
+          ProcessReleases:
+            Type: Map
+            ItemsPath: $.items
+            # Unit of work is one (userId, releaseId). Low concurrency keeps the
+            # shared Discogs IP rate-limit-safe; per-release 429 retry absorbs bursts.
+            MaxConcurrency: 2
+            ItemProcessor:
+              ProcessorConfig:
+                Mode: DISTRIBUTED
+                ExecutionType: STANDARD
+              StartAt: CheckRelease
+              States:
+                CheckRelease:
+                  Type: Task
+                  Resource:
+                    Fn::GetAtt: [CheckReleaseMarketplaceLambdaFunction, Arn]
+                  Retry:
+                    # Isolated per-release backoff so a 429 never cascades.
+                    - ErrorEquals: [States.ALL]
+                      IntervalSeconds: 5
+                      MaxAttempts: 5
+                      BackoffRate: 2
+                  End: true
+            ResultPath: $.results
+            Next: SendDigest
+          SendDigest:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [SendDigestLambdaFunction, Arn]
+            End: true
+
+resources:
+  Resources:
+    # Custom execution role for the state machine. A Distributed Map runs child
+    # executions, so it needs states:StartExecution on itself plus Describe/Stop
+    # on its executions, and the EventBridge managed-rule permissions.
+    MarketMonitorStateMachineRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: states.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: ${self:service}-market-monitor-sfn
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: lambda:InvokeFunction
+                  Resource:
+                    - Fn::GetAtt: [GetWantlistLambdaFunction, Arn]
+                    - Fn::GetAtt: [CheckReleaseMarketplaceLambdaFunction, Arn]
+                    - Fn::GetAtt: [SendDigestLambdaFunction, Arn]
+                - Effect: Allow
+                  Action: states:StartExecution
+                  Resource:
+                    - arn:aws:states:${aws:region}:${aws:accountId}:stateMachine:${self:service}-market-monitor
+                - Effect: Allow
+                  Action:
+                    - states:DescribeExecution
+                    - states:StopExecution
+                  Resource:
+                    - arn:aws:states:${aws:region}:${aws:accountId}:execution:${self:service}-market-monitor/*
+                - Effect: Allow
+                  Action:
+                    - events:PutTargets
+                    - events:PutRule
+                    - events:DescribeRule
+                  Resource:
+                    - arn:aws:events:${aws:region}:${aws:accountId}:rule/StepFunctionsGetEventsForMapStateRule
