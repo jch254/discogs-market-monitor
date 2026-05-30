@@ -31,12 +31,46 @@ provider:
             - dynamodb:GetItem
             - dynamodb:PutItem
             - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
             - dynamodb:Query
           Resource:
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-entities
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-entities/index/*
+        # The scheduled dispatcher fans out one execution per registered monitor.
+        - Effect: Allow
+          Action:
+            - states:StartExecution
+          Resource:
+            - arn:aws:states:${aws:region}:${aws:accountId}:stateMachine:${self:service}-market-monitor
 
 functions:
+  # Self-service signup API: register/update or remove a monitor.
+  registerMonitor:
+    handler: src/registerMonitor.handler
+    memorySize: 256
+    timeout: 30
+    events:
+      - httpApi:
+          path: /monitors
+          method: post
+      - httpApi:
+          path: /monitors/{username}
+          method: delete
+
+  # Scheduled fan-out: lists registered monitors and starts one workflow
+  # execution per user (replaces the old single-user schedule).
+  dispatchMonitors:
+    handler: src/dispatchMonitors.handler
+    memorySize: 256
+    timeout: 60
+    environment:
+      STATE_MACHINE_ARN: arn:aws:states:${aws:region}:${aws:accountId}:stateMachine:${self:service}-market-monitor
+    events:
+      - schedule:
+          rate:
+            - rate(12 hours)
+          enabled: true
+
   # Step Functions workflow Lambdas.
   getWantlist:
     handler: src/getWantlist.handler
@@ -60,16 +94,9 @@ stepFunctions:
       name: ${self:service}-market-monitor
       role:
         Fn::GetAtt: [MarketMonitorStateMachineRole, Arn]
-      events:
-        # EventBridge schedule replaces the old standalone scheduled Lambda.
-        - schedule:
-            rate:
-              - rate(12 hours)
-            enabled: true
-            input:
-              username: ${ssm:/discogs-market-monitor/username, ''}
-              shipsFrom: ${ssm:/discogs-market-monitor/ships_from, ''}
-              destinationEmail: ${ssm:/discogs-market-monitor/destination_email, ''}
+      # Started per-registered-user by the scheduled dispatchMonitors Lambda.
+      # Each execution input is { username, shipsFrom, destinationEmail,
+      # discogsToken? } for one monitor.
       definition:
         Comment: Incremental, rate-limit-safe Discogs wantlist marketplace monitor.
         StartAt: GetWantlist

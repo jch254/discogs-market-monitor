@@ -6,6 +6,42 @@ Discogs Wantlist Marketplace Monitor powered by Serverless, Step Functions, Type
 
 Processing is incremental and rate-limit-safe: each release is checked independently, results are deduped in DynamoDB, and only newly-seen listings are emailed.
 
+It is multi-tenant: anyone can self-register their own monitor via a small HTTP API. A scheduled dispatcher then runs the workflow independently for every registered user.
+
+## Sign up (register your own monitor)
+
+The deployed service exposes an HTTP API so users can set up their own monitor without touching infrastructure or SSM parameters.
+
+Register (or update) a monitor:
+
+```bash
+curl -X POST https://<your-api-host>/monitors \
+  -H 'content-type: application/json' \
+  -d '{
+    "username": "your_discogs_username",
+    "shipsFrom": "Australia, New Zealand",
+    "destinationEmail": "you@internet.com",
+    "discogsToken": "optional_personal_access_token"
+  }'
+```
+
+- `username` (required) — your Discogs username; its wantlist is scanned.
+- `shipsFrom` (required) — one or more countries, comma separated.
+- `destinationEmail` (required) — where the digest is emailed.
+- `discogsToken` (optional) — a [Discogs personal access token](https://www.discogs.com/settings/developers). Required only to read a **private** wantlist; public wantlists work without it (the shared service token is used as a fallback). The token is stored but never returned by the API.
+
+The endpoint upserts by username, so re-posting updates your config. Posting prints the stored config back (with `hasDiscogsToken` instead of the secret).
+
+Unsubscribe:
+
+```bash
+curl -X DELETE https://<your-api-host>/monitors/your_discogs_username
+```
+
+After Serverless deploys, the API host is printed in the stack outputs (the `httpApi` endpoint).
+
+> The signup endpoint is unauthenticated for simplicity. For a public production deployment, front it with throttling/WAF or an API key and verify `destinationEmail` to prevent abuse.
+
 ## Technologies Used
 
 - [Serverless](https://github.com/serverless/serverless)
@@ -19,34 +55,51 @@ Processing is incremental and rate-limit-safe: each release is checked independe
 
 ## Architecture
 
-An EventBridge schedule starts a Step Functions state machine every twelve hours. The unit of work is a single `(userId, releaseId)`, not the whole wantlist, so execution scales linearly and never times out.
+Users self-register monitors through an HTTP API. An EventBridge schedule then triggers a dispatcher every twelve hours that lists every registered monitor and starts one isolated Step Functions execution per user. Within an execution, the unit of work is a single `(userId, releaseId)`, not the whole wantlist, so execution scales linearly and never times out.
 
 ```
+                 POST /monitors                    DELETE /monitors/{username}
+                       │                                       │
+                       ▼                                       ▼
+              ┌──────────────────── registerMonitor Lambda ───────────────────┐
+              │  validate + upsert Monitor (PK MONITOR  SK MONITOR#<username>) │
+              └───────────────────────────────┬───────────────────────────────┘
+                                               ▼
+                                       DynamoDB (Monitors)
+
 EventBridge (rate: 12h)
-        │  input: { username, shipsFrom, destinationEmail }
+        │
         ▼
+┌──────────────────────── dispatchMonitors Lambda ───────────────────────┐
+│  list all Monitors ──► StartExecution per enabled user                  │
+│  input: { username, shipsFrom, destinationEmail, discogsToken? }        │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                 ▼  (one execution per user)
 ┌─────────────────────────────────────────────────────────────┐
 │ Step Functions state machine                                 │
 │                                                              │
 │  GetWantlist ──► Map (DISTRIBUTED, MaxConcurrency 2) ──► SendDigest
 │  (one task         │  CheckReleaseMarketplace                │
-│   per release)     │  · RSS-enumerate current listing ids    │
-│                    │  · fetch only NEW ids via Discogs API   │
-│                    │  · filter shipsFrom                      │
+│   per release;     │  · RSS-enumerate current listing ids    │
+│   uses user's      │  · fetch only NEW ids via Discogs API   │
+│   token)           │  · filter shipsFrom                      │
 │                    │  · record new matches (un-notified)     │
 │                    │  Retry: 429 → exponential backoff       │
 └─────────────────────────────────────────────────────────────┘
         │                                       │
         ▼                                       ▼
   DynamoDB (single table)              Resend (one digest email
-  · ReleaseCheckState                   of un-notified listings,
-    PK USER#<id> SK RELEASE#<id>        then marks them notified)
+  · Monitor                             of un-notified listings,
+    PK MONITOR SK MONITOR#<username>    then marks them notified)
+  · ReleaseCheckState
+    PK USER#<id> SK RELEASE#<id>
   · MarketplaceListingState
     PK USER#<id> SK LISTING#<id>
 ```
 
 Key properties:
 
+- **Multi-tenant** — users sign up via `POST /monitors`; the scheduled `dispatchMonitors` Lambda fans one Step Functions execution out per registered user, so one user's failure or rate-limit never affects another.
 - **Rate-limit safe** — low Map concurrency plus a fixed throttle and jittered exponential backoff on Discogs `429`s; failures are isolated per release so one bad release never fails the run.
 - **Incremental** — `ReleaseCheckState` skips releases checked within the last hour and tracks seen listing ids, so each run only fetches genuinely new listings.
 - **Idempotent** — new listings are written to `MarketplaceListingState` with a conditional put; `SendDigest` emails un-notified rows then marks them notified, so retries never duplicate or drop a digest.

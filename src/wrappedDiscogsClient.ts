@@ -25,6 +25,17 @@ export const getDiscogsClient = () => {
   return discogsClient;
 };
 
+// Builds a client scoped to a specific user's personal access token. Used so
+// each registered monitor reads its own (possibly private) wantlist. Falls back
+// to the shared service client when no token is supplied.
+export const getDiscogsClientForToken = (token?: string) => {
+  if (!token) {
+    return getDiscogsClient();
+  }
+
+  return new DiscogsClient('MarketMonitor/1.0', { userToken: token });
+};
+
 export const getUserWantlist = async (
   discogsClient: DiscogsClient,
   username?: string,
