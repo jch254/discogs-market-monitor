@@ -10,13 +10,6 @@ plugins:
 package:
   individually: true
 
-custom:
-  # Deployment-level cadence for the scheduled dispatcher. This is the floor for
-  # how often any monitor can run; each monitor's per-user frequencyHours is
-  # honoured on top of this against its lastDispatchedAt. Override per deploy,
-  # e.g. `--param="dispatchScheduleRate=rate(6 hours)"`.
-  dispatchScheduleRate: ${param:dispatchScheduleRate, 'rate(12 hours)'}
-
 provider:
   name: aws
   runtime: nodejs22.x
@@ -75,7 +68,7 @@ functions:
     events:
       - schedule:
           rate:
-            - ${self:custom.dispatchScheduleRate}
+            - rate(12 hours)
           enabled: true
 
   # Step Functions workflow Lambdas.

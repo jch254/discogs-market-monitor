@@ -30,6 +30,16 @@ const MAX_FREQUENCY_HOURS = 168; // one week
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
+// Marketplace/identity values are interpolated into HTML responses, so escape
+// them to avoid reflecting untrusted content into the page.
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 const html = (
   statusCode: number,
   body: string,
@@ -165,7 +175,11 @@ const handleCallback = async (
 
   return html(
     200,
-    `<h1>Connected to Discogs</h1><p>Hi <strong>${username}</strong> — your wantlist marketplace monitor is now active. Digests will be sent to <strong>${pending.destinationEmail}</strong>.</p>`,
+    `<h1>Connected to Discogs</h1><p>Hi <strong>${escapeHtml(
+      username,
+    )}</strong> — your wantlist marketplace monitor is now active. Digests will be sent to <strong>${escapeHtml(
+      pending.destinationEmail,
+    )}</strong>.</p>`,
   );
 };
 
