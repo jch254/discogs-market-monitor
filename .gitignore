@@ -13,3 +13,4 @@ yarn.lock
 .vscode/
 jch.json
 jordyfrog.json
+/example
