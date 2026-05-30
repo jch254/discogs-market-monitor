@@ -19,6 +19,7 @@
         "cloudformation:*",
         "lambda:*",
         "events:*",
+        "dynamodb:*",
         "ssm:DescribeParameters",
         "application-autoscaling:*"
       ]

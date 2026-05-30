@@ -12,6 +12,22 @@ provider:
   runtime: nodejs22.x
   stage: prod
   region: ap-southeast-2
+  environment:
+    # Single physical DynamoDB table (created in infrastructure/ via the shared
+    # dynamodb-single-table module). Holds ReleaseCheckState rows now and other
+    # entities later under distinct key prefixes.
+    DYNAMODB_TABLE: ${self:service}-entities
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:Query
+          Resource:
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-entities
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-entities/index/*
 
 functions:
   handler:

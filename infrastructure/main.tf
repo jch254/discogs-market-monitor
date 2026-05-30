@@ -61,3 +61,14 @@ resource "aws_codebuild_webhook" "codebuild_webhook" {
   project_name  = var.name
   branch_filter = "master"
 }
+
+# Single physical DynamoDB table for app state (single-table design).
+# Holds ReleaseCheckState rows now (PK = USER#<userId>, SK = RELEASE#<releaseId>)
+# and other entities later under distinct key prefixes. TTL on the `ttl`
+# attribute lets stale rows self-expire. Consumed by the Lambda via the
+# DYNAMODB_TABLE env var set in serverless.yml.
+module "dynamodb_single_table" {
+  source = "github.com/jch254/terraform-modules//dynamodb-single-table?ref=1.18.0"
+
+  name = "${var.name}-entities"
+}
