@@ -30,11 +30,6 @@ export interface Monitor {
   // private wantlist; public wantlists work without it (falls back to the
   // shared service token).
   discogsToken?: string;
-  // Optional per-user Discogs OAuth 1.0a access token + secret, obtained when
-  // the user completes the OAuth flow. Preferred over discogsToken; signs API
-  // calls with the app consumer key/secret on the user's behalf.
-  discogsOAuthToken?: string;
-  discogsOAuthTokenSecret?: string;
   // How often (in hours) the scheduled dispatcher should start a run for this
   // user. Honoured against `lastDispatchedAt`; the effective minimum is the
   // deployment-level dispatcher schedule rate.
@@ -67,8 +62,6 @@ export const putMonitor = async (input: {
   shipsFrom: string;
   destinationEmail: string;
   discogsToken?: string;
-  discogsOAuthToken?: string;
-  discogsOAuthTokenSecret?: string;
   frequencyHours?: number;
   enabled?: boolean;
 }): Promise<Monitor> => {
@@ -80,9 +73,6 @@ export const putMonitor = async (input: {
     shipsFrom: input.shipsFrom,
     destinationEmail: input.destinationEmail,
     discogsToken: input.discogsToken,
-    discogsOAuthToken: input.discogsOAuthToken ?? existing?.discogsOAuthToken,
-    discogsOAuthTokenSecret:
-      input.discogsOAuthTokenSecret ?? existing?.discogsOAuthTokenSecret,
     frequencyHours:
       input.frequencyHours ?? existing?.frequencyHours ?? DEFAULT_FREQUENCY_HOURS,
     lastDispatchedAt: existing?.lastDispatchedAt,

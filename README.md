@@ -34,22 +34,6 @@ curl -X POST https://<your-api-host>/monitors \
 
 The endpoint upserts by username, so re-posting updates your config. Posting prints the stored config back (with `hasDiscogsToken` instead of the secret).
 
-### Connect with Discogs OAuth (no token copy/paste)
-
-Instead of pasting a personal access token, users can authorise the app directly via the built-in Discogs OAuth 1.0a flow. This authenticates the user on Discogs and persists a per-user access token to DynamoDB for the scheduled monitor to use on their behalf — handy for private wantlists without ever handling a long-lived token by hand.
-
-Send the user to the start endpoint with their signup context; they are redirected to Discogs to approve, then back to the callback which registers (or updates) their monitor automatically:
-
-```
-https://<your-api-host>/oauth/start?destinationEmail=you@internet.com&shipsFrom=Australia,New%20Zealand&frequencyHours=12
-```
-
-- `destinationEmail` (required) — where the digest is emailed.
-- `shipsFrom` (required) — one or more countries, comma separated.
-- `frequencyHours` (optional) — dispatch cadence, 1–168 hours.
-
-The username is taken from the authenticated Discogs identity, so it never needs to be supplied. The OAuth access token/secret are stored server-side and never returned. This flow requires `DISCOGS_CONSUMER_KEY`/`DISCOGS_CONSUMER_SECRET` to be configured and `DYNAMODB_TABLE` to be set.
-
 Unsubscribe:
 
 ```bash
@@ -86,23 +70,12 @@ Users self-register monitors through an HTTP API. An EventBridge schedule then t
                                                ▼
                                        DynamoDB (Monitors)
 
-       GET /oauth/start ──► Discogs authorize ──► GET /oauth/callback
-                       │                                       │
-                       ▼                                       ▼
-              ┌──────────────────────── oauthFlow Lambda ─────────────────────┐
-              │  request token (PK OAUTH_REQUEST, ttl) ► exchange access token│
-              │  ► read identity ► upsert Monitor with OAuth token/secret     │
-              └───────────────────────────────┬───────────────────────────────┘
-                                               ▼
-                                       DynamoDB (Monitors)
-
 EventBridge (rate: 12h)
         │
         ▼
 ┌──────────────────────── dispatchMonitors Lambda ───────────────────────┐
 │  list all Monitors ──► StartExecution per enabled user                  │
-│  input: { username, shipsFrom, destinationEmail, discogsToken?,         │
-│           discogsOAuthToken?, discogsOAuthTokenSecret? }                 │
+│  input: { username, shipsFrom, destinationEmail, discogsToken? }        │
 └───────────────────────────────┬─────────────────────────────────────────┘
                                  ▼  (one execution per user)
 ┌─────────────────────────────────────────────────────────────┐
@@ -369,14 +342,13 @@ You must [sign up for/create a Discogs app](https://www.discogs.com/settings/dev
 
 ### Environment variables
 
-- **DISCOGS_CONSUMER_KEY/DISCOGS_CONSUMER_SECRET** OR **DISCOGS_USER_TOKEN** (req - see [Discogs API documentation](http://www.discogs.com/developers/#page:authentication) for more info) - Auth for Discogs app. `DISCOGS_CONSUMER_KEY`/`DISCOGS_CONSUMER_SECRET` are also required for the self-service OAuth flow (`/oauth/start` + `/oauth/callback`)
+- **DISCOGS_CONSUMER_KEY/DISCOGS_CONSUMER_SECRET** OR **DISCOGS_USER_TOKEN** (req - see [Discogs API documentation](http://www.discogs.com/developers/#page:authentication) for more info) - Auth for Discogs app
 - **RESEND_API_KEY** (req) - Auth for Resend account
 - **SENDER_EMAIL** (req) - Email address to send digest from via Resend (domain must be verified in Resend)
 - **DYNAMODB_TABLE** (opt) - Single-table name for state. Set automatically when deployed; when unset (e.g. local dev) state is skipped and every release is re-checked
 - **DISCOGS_THROTTLE_MS** (opt, default `1100`) - Fixed delay between external Discogs calls
 - **RECENTLY_CHECKED_MS** (opt, default `3600000`) - Releases checked more recently than this are skipped
 - **STATE_TTL_MS** / **LISTING_TTL_MS** (opt, default 30 days) - TTL for `ReleaseCheckState` / `MarketplaceListingState` rows
-- **OAUTH_REQUEST_TTL_MS** (opt, default `900000`) - How long a pending OAuth authorisation (request token) is valid before it self-expires
 - **DEBUG** (opt) - If true, enables debug logging to console
 
   **All required environment variables above must be set before `pnpm run dev` command. These can also be set via a .env file.**
@@ -420,7 +392,7 @@ In production the EventBridge schedule reads its input from SSM Parameter Store,
 - `/discogs-market-monitor/ships_from`
 - `/discogs-market-monitor/destination_email`
 
-(plus the existing `discogs_user_token`, `resend_api_key` and `sender_email` parameters, and `discogs_consumer_key`/`discogs_consumer_secret` if you enable the OAuth flow).
+(plus the existing `discogs_user_token`, `resend_api_key` and `sender_email` parameters).
 
 ### Migration order
 
