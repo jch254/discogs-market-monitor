@@ -8,7 +8,7 @@ terraform init \
   -reconfigure \
   -backend-config "bucket=${REMOTE_STATE_BUCKET:-jch254-terraform-remote-state}" \
   -backend-config "key=${TF_STATE_KEY:-discogs-market-monitor-frontend-prod-infrastructure}" \
-  -backend-config "region=${AWS_DEFAULT_REGION:-ap-southeast-2}" \
+  -backend-config "region=${REMOTE_STATE_REGION:-ap-southeast-4}" \
   -get=true
 
 terraform plan -out main.tfplan

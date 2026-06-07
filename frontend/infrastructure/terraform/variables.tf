@@ -19,7 +19,7 @@ variable "domain" {
 variable "site_subdomain" {
   description = "Subdomain to serve the site from. Empty string serves at the apex."
   type        = string
-  default     = ""
+  default     = "discogs"
 }
 
 variable "bucket_name" {

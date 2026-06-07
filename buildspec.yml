@@ -13,6 +13,7 @@ env:
     TF_VAR_cache_bucket: "jch254-codebuild-cache/discogs-market-monitor"
     TF_VAR_build_compute_type: "BUILD_GENERAL1_MEDIUM"
     REMOTE_STATE_BUCKET: "jch254-terraform-remote-state"
+    REMOTE_STATE_REGION: "ap-southeast-4"
 
 phases:
   install:

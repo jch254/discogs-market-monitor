@@ -7,6 +7,7 @@ env:
   variables:
     AWS_DEFAULT_REGION: "ap-southeast-2"
     REMOTE_STATE_BUCKET: "jch254-terraform-remote-state"
+    REMOTE_STATE_REGION: "ap-southeast-4"
     TF_STATE_KEY: "discogs-market-monitor-frontend-prod-infrastructure"
   parameter-store:
     CLOUDFLARE_API_TOKEN: "/discogs-market-monitor-frontend/cloudflare-api-token"
