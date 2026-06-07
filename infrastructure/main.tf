@@ -67,6 +67,14 @@ module "codebuild_role" {
       ]
       Resource = ["arn:aws:ssm:*:*:parameter/serverless-framework/*"]
     },
+    # Full Lambda management over this project's functions. The module's scoped
+    # grant omits version/alias actions (e.g. lambda:PublishVersion) that a
+    # serverless deploy performs, so allow the whole namespace on our functions.
+    {
+      Effect   = "Allow"
+      Action   = ["lambda:*"]
+      Resource = ["arn:aws:lambda:*:*:function:${var.name}-*"]
+    },
   ]
 }
 
