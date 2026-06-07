@@ -2,6 +2,9 @@
 version: 0.2
 
 env:
+  parameter-store:
+    # Serverless Framework v4 requires authentication for every deploy.
+    SERVERLESS_LICENSE_KEY: "/discogs-market-monitor/serverless_license_key"
   variables:
     TF_VAR_region: "ap-southeast-2"
     TF_VAR_name: "discogs-market-monitor"
