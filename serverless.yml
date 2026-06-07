@@ -1,5 +1,3 @@
-org: jch254
-app: discogs-market-monitor
 service: discogs-market-monitor
 
 frameworkVersion: "4"

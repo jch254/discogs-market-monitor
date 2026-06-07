@@ -22,26 +22,14 @@ interface RegisteredMonitor {
   shipsFrom: string;
   destinationEmail: string;
   enabled: boolean;
-  frequencyHours?: number;
   hasDiscogsToken: boolean;
 }
-
-// Cadence options surfaced in the UI. The API accepts any whole number of
-// hours; these are the sensible presets.
-const FREQUENCY_OPTIONS = [
-  { value: '6', label: 'Every 6 hours' },
-  { value: '12', label: 'Every 12 hours' },
-  { value: '24', label: 'Once a day' },
-  { value: '48', label: 'Every 2 days' },
-  { value: '168', label: 'Once a week' },
-];
 
 const initialForm = {
   username: '',
   shipsFrom: '',
   destinationEmail: '',
   discogsToken: '',
-  frequencyHours: '12',
 };
 
 export default function MonitorForm() {
@@ -114,11 +102,10 @@ export default function MonitorForm() {
           method: 'DELETE',
         });
       } else {
-        const body: Record<string, string | number> = {
+        const body: Record<string, string> = {
           username,
           shipsFrom: form.shipsFrom.trim(),
           destinationEmail: form.destinationEmail.trim(),
-          frequencyHours: Number(form.frequencyHours),
         };
         if (form.discogsToken.trim()) {
           body.discogsToken = form.discogsToken.trim();
@@ -243,28 +230,6 @@ export default function MonitorForm() {
             </div>
 
             <div>
-              <label htmlFor="frequencyHours" className="field-label">
-                Check frequency
-              </label>
-              <select
-                id="frequencyHours"
-                name="frequencyHours"
-                className="field-input"
-                value={form.frequencyHours}
-                onChange={update('frequencyHours')}
-              >
-                {FREQUENCY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <p className="field-hint">
-                How often your wantlist is scanned and a digest sent.
-              </p>
-            </div>
-
-            <div>
               <label htmlFor="discogsToken" className="field-label">
                 Discogs token{' '}
                 <span className="font-normal text-brand-muted">(optional)</span>
@@ -340,12 +305,6 @@ export default function MonitorForm() {
                 <dd>{result.shipsFrom}</dd>
                 <dt className="font-semibold">Email</dt>
                 <dd>{result.destinationEmail}</dd>
-                <dt className="font-semibold">Frequency</dt>
-                <dd>
-                  {result.frequencyHours
-                    ? `every ${result.frequencyHours}h`
-                    : 'every 12h'}
-                </dd>
                 <dt className="font-semibold">Private token</dt>
                 <dd>{result.hasDiscogsToken ? 'stored' : 'not set'}</dd>
               </dl>
