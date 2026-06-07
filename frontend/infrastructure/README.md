@@ -44,7 +44,7 @@ Remote state is stored in S3. The bucket/key/region are supplied via
 | Variable | Default | Description |
 |---|---|---|
 | `domain` | `603.nz` | Cloudflare zone the site is served from |
-| `site_subdomain` | `""` (apex) | Subdomain to serve from, e.g. `app` |
+| `site_subdomain` | `discogs` | Subdomain to serve from (`""` serves at the apex) |
 | `bucket_name` | `discogs-market-monitor-frontend` | Globally-unique S3 bucket name |
 | `api_base_url` | `""` | Deployed `httpApi` base URL baked into the build |
 | `manage_dns` | `true` | Whether Terraform manages the Cloudflare DNS record |

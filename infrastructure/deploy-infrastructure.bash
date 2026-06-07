@@ -6,7 +6,7 @@ cd infrastructure
 terraform init \
   -backend-config "bucket=${REMOTE_STATE_BUCKET}" \
   -backend-config "key=${TF_VAR_name}" \
-  -backend-config "region=${TF_VAR_region}" \
+  -backend-config "region=${REMOTE_STATE_REGION:-ap-southeast-4}" \
   -get=true \
   -upgrade=true
 terraform plan -out main.tfplan

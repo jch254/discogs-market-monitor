@@ -23,17 +23,34 @@ module "certificate" {
   domain_name = local.site_domain
 }
 
-# DNS validation records for the cert, created in Cloudflare.
+# Names the certificate covers. Kept as static config so the validation
+# records' for_each keys are known at plan time (the ACM record names/values
+# are only known after apply). Extend if subject_alternative_names are added.
+locals {
+  certificate_domains = [local.site_domain]
+}
+
+# DNS validation records for the cert, created in Cloudflare. Keyed by domain
+# name (static); the ACM-computed record name/type/value are looked up per key.
 module "certificate_validation_records" {
   source = "github.com/jch254/terraform-modules//cloudflare-dns-records?ref=1.18.0"
 
   zone_id = data.cloudflare_zone.zone.id
   records = {
-    for key, record in module.certificate.validation_records : key => {
-      name    = record.name
-      type    = record.type
-      content = record.value
-      ttl     = 1
+    for domain in local.certificate_domains : domain => {
+      name = one([
+        for dvo in module.certificate.domain_validation_options :
+        dvo.resource_record_name if dvo.domain_name == domain
+      ])
+      type = one([
+        for dvo in module.certificate.domain_validation_options :
+        dvo.resource_record_type if dvo.domain_name == domain
+      ])
+      content = one([
+        for dvo in module.certificate.domain_validation_options :
+        dvo.resource_record_value if dvo.domain_name == domain
+      ])
+      ttl = 1
     }
   }
 }
