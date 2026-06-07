@@ -56,6 +56,17 @@ module "codebuild_role" {
       Action   = ["states:*"]
       Resource = ["*"]
     },
+    # Serverless Framework v4 records its managed deployment bucket name in SSM.
+    {
+      Effect = "Allow"
+      Action = [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:PutParameter",
+        "ssm:DeleteParameter",
+      ]
+      Resource = ["arn:aws:ssm:*:*:parameter/serverless-framework/*"]
+    },
   ]
 }
 
