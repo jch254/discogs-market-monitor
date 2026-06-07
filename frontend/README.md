@@ -7,7 +7,9 @@ deployed `httpApi` (`POST /monitors`, `DELETE /monitors/{username}`).
 
 Built with [Astro](https://astro.build), [Tailwind CSS](https://tailwindcss.com)
 and a small React island for the interactive form. The static output is hosted
-on S3 and fronted by Cloudflare (see [infrastructure/](./infrastructure)).
+in a private S3 bucket served by CloudFront (Origin Access Control), with a
+us-east-1 ACM certificate for TLS and a Cloudflare DNS record pointing at the
+CloudFront distribution (see [infrastructure/](./infrastructure)).
 
 ## How it talks to the API
 

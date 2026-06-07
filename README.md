@@ -381,19 +381,54 @@ TBC
 
 ## Deployment/Infrastructure
 
-Refer to the [/infrastructure](./infrastructure) directory for the Terraform that provisions the CodeBuild CI/CD pipeline and the DynamoDB single table. The Lambdas and Step Functions state machine are deployed with the Serverless Framework (`pnpm run deploy`).
+The Terraform in [/infrastructure](./infrastructure) provisions the CI/CD pipeline (CodeBuild project + webhook + IAM role), the DynamoDB single table, and the SSM parameters the app reads — all composed from the shared [`terraform-modules`](https://github.com/jch254/terraform-modules) (`codebuild-project`, `codebuild-terraform-role`, `dynamodb-single-table`, `ssm-parameter-placeholder`). The Lambdas and Step Functions state machine are deployed with the Serverless Framework (`pnpm run deploy`).
 
-In production the EventBridge schedule reads its input from SSM Parameter Store, so set these before the first scheduled run:
+Day-to-day, pushing to `master` triggers CodeBuild, which runs [buildspec.yml](./buildspec.yml): `terraform apply` (infra) then `pnpm run deploy` (app). The pipeline is self-managing because the CodeBuild project that runs it is itself defined in this Terraform — so the **very first** deploy has to be bootstrapped by hand (see below).
 
+The SSM parameters are created as placeholders by Terraform; set their real values out-of-band (console/CLI) before the first scheduled run — Terraform won't overwrite them on later applies:
+
+- `/discogs-market-monitor/discogs_user_token` (SecureString)
+- `/discogs-market-monitor/resend_api_key` (SecureString)
+- `/discogs-market-monitor/sender_email`
 - `/discogs-market-monitor/username`
 - `/discogs-market-monitor/ships_from`
 - `/discogs-market-monitor/destination_email`
 
-(plus the existing `discogs_user_token`, `resend_api_key` and `sender_email` parameters).
+### First deploy (bootstrap)
 
-### Migration order
+The CI pipeline can't deploy itself the first time, so run these once locally with AWS credentials for the target account:
 
-1. `terraform apply` in [/infrastructure](./infrastructure) to create/update the DynamoDB table (and CI role permissions).
-2. `pnpm run deploy` to deploy the Lambdas and state machine.
+**Prerequisites (exist outside this repo):**
 
-The first scheduled run starts with empty state, so it behaves like the original full scan (every current matching listing is "new" and included in one digest). Subsequent runs only surface newly-seen listings.
+- Terraform remote-state S3 bucket (`jch254-terraform-remote-state`)
+- A GitHub source credential imported into CodeBuild (`aws codebuild import-source-credentials`) so the webhook can register
+- A Resend account with a verified sender domain
+
+**Steps:**
+
+1. **Infra** — from [/infrastructure](./infrastructure):
+
+   ```bash
+   terraform init \
+     -backend-config 'bucket=jch254-terraform-remote-state' \
+     -backend-config 'key=discogs-market-monitor' \
+     -backend-config 'region=ap-southeast-2'
+   terraform apply
+   ```
+
+   This creates the CodeBuild project + webhook + IAM role, the DynamoDB table, and the placeholder SSM parameters.
+
+2. **Set the SSM parameter values** (the six listed above) via console/CLI.
+
+3. **App** — from the repo root:
+
+   ```bash
+   pnpm install
+   pnpm run deploy
+   ```
+
+   Note the `httpApi` endpoint in the deploy output — it's the API host used for signups and the frontend's `PUBLIC_API_BASE_URL`.
+
+After this, every push to `master` redeploys automatically via CodeBuild. The signup UI is a separate stack — see [/frontend/infrastructure](./frontend/infrastructure).
+
+The first scheduled run starts with empty state, so it behaves like a full scan (every current matching listing is "new" and included in one digest). Subsequent runs only surface newly-seen listings.
