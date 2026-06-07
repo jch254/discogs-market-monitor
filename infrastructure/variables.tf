@@ -6,12 +6,9 @@ variable "name" {
   description = "Name of project (used in AWS resource names)"
 }
 
-variable "kms_key_arns" {
-  description = "Array of KMS Key ARNs used to decrypt secrets specified via ssm_parameter_arns variable"
-}
-
 variable "ssm_parameter_arns" {
-  description = "Array of SSM Parameter ARNs used to set secret build environment variables via SSM Parameter Store"
+  description = "SSM Parameter ARNs the build may read/manage for build environment secrets"
+  type        = list(string)
 }
 
 variable "build_docker_image" {

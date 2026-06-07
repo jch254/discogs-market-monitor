@@ -1,22 +1,31 @@
 # Frontend Infrastructure
 
-Terraform for hosting the [frontend](../README.md) signup UI on AWS S3, fronted
-by Cloudflare for TLS/CDN, and deployed by AWS CodeBuild.
+Terraform for hosting the [frontend](../README.md) signup UI on AWS (private S3
+served by CloudFront), with TLS via ACM, DNS in Cloudflare, and deployment by
+AWS CodeBuild. It is composed from the shared
+[`terraform-modules`](https://github.com/jch254/terraform-modules) (`web-app`,
+`acm-dns-validated-certificate`, `cloudflare-dns-records`, `codebuild-project`,
+`codebuild-terraform-role`).
 
 ## What is managed
 
-**S3 static website** (`aws_s3_bucket` + `aws_s3_bucket_website_configuration`)
-- Public-read bucket serving `dist/` as a static website
-- `index.html` is used as both the index and error document (single-page site)
+**Static hosting** (`web-app` module)
+- Private S3 bucket (BucketOwnerEnforced, no public access) serving `dist/`
+- CloudFront distribution reading the bucket via Origin Access Control (OAC)
+- SPA fallback: 403/404 responses return `index.html` with HTTP 200
 
-**Cloudflare DNS** (`cloudflare_dns_record`)
-- Proxied `CNAME` from the site domain → the S3 website endpoint
-- Cloudflare terminates TLS and caches in front of the HTTP-only S3 endpoint
-- Set `manage_dns = false` to skip DNS management (e.g. apex already managed
-  elsewhere)
+**TLS certificate** (`acm-dns-validated-certificate` module)
+- ACM certificate for the site domain, issued in **us-east-1** (required by
+  CloudFront), DNS-validated via Cloudflare records
 
-**CodeBuild deployment** (`aws_codebuild_project`)
-- Builds the Astro site and `aws s3 sync`s `dist/` to the bucket
+**Cloudflare DNS** (`cloudflare-dns-records` module)
+- `CNAME` from the site domain → the CloudFront distribution domain (DNS-only;
+  CloudFront terminates TLS with the ACM cert), plus the ACM validation records
+- Set `manage_dns = false` to skip the site record (e.g. apex managed elsewhere)
+
+**CodeBuild deployment** (`codebuild-project` + `codebuild-terraform-role`)
+- Builds the Astro site, `aws s3 sync`s `dist/` to the bucket, then invalidates
+  the CloudFront distribution
 - `PUBLIC_API_BASE_URL` is passed to the build via the project environment so
   the bundle targets the deployed API
 - `CLOUDFLARE_API_TOKEN` is read from SSM Parameter Store by `buildspec.yml`

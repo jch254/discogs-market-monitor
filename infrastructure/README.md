@@ -1,23 +1,28 @@
 # Deployment/Infrastructure
 
-This project is built, tested and deployed to AWS by CodeBuild. There are two components to deploy - the Serverless service and all supporting infrastructure which is defined with Terraform (CodeBuild, Route53, CloudFront etc.).
+This project is built and deployed to AWS by CodeBuild. There are two components: the supporting infrastructure defined here with Terraform, and the Serverless service (Lambdas + Step Functions state machine) deployed with the Serverless Framework.
 
-> The signup web UI is a separate static site with its own Terraform stack (S3 + Cloudflare + CodeBuild). See [/frontend/infrastructure](../frontend/infrastructure) for that deployment.
+The Terraform is composed from the shared [`terraform-modules`](https://github.com/jch254/terraform-modules):
+
+- `codebuild-project` — the CI CodeBuild project and its `master` push webhook
+- `codebuild-terraform-role` — the IAM role the build assumes (Terraform + `serverless deploy`)
+- `dynamodb-single-table` — the app's single DynamoDB table
+- `ssm-parameter-placeholder` — the `/discogs-market-monitor/*` runtime params (created as placeholders; real values set out-of-band)
+
+> The signup web UI is a separate static site with its own Terraform stack (CloudFront + private S3 + ACM + Cloudflare + CodeBuild). See [/frontend/infrastructure](../frontend/infrastructure) for that deployment.
 
 I've created Docker-powered build/deployment environments for [Serverless projects](https://github.com/jch254/docker-node-serverless) and [Node projects](https://github.com/jch254/docker-node-terraform-aws) to use with AWS CodeBuild and Bitbucket Pipelines.
 
 ## Serverless Service
 
-To deploy/manage the Serverless service you will need to create an IAM user with the required permissions and set credentials for this user - see [here](https://github.com/serverless/serverless/blob/master/docs/providers/aws/guide/credentials.md) for further info. After you have done this, run the commands below to deploy the service:
-
-**TODO**
-
-E.g. `pnpm run deploy`
+The build's CodeBuild role (above) carries the permissions needed for `serverless deploy`. For a local deploy, use AWS credentials with equivalent access, then from the repo root:
 
 ```bash
 pnpm install
 pnpm run deploy
 ```
+
+See the [first-deploy bootstrap steps](../README.md#first-deploy-bootstrap) in the root README for the full ordering (infra → SSM values → serverless).
 
 ## Supporting Infrastructure/Terraform
 

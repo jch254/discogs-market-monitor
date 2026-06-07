@@ -32,8 +32,9 @@ phases:
     commands:
       - echo Deploying infrastructure...
       - bash ./infrastructure/deploy-infrastructure.bash
-      # Read the bucket and API base URL the infra just provisioned.
+      # Read the bucket and CloudFront distribution the infra just provisioned.
       - export SITE_BUCKET="$(terraform -chdir=infrastructure/terraform output -raw site_bucket)"
+      - export DISTRIBUTION_ID="$(terraform -chdir=infrastructure/terraform output -raw cloudfront_distribution_id)"
       - echo Building Astro site...
       - pnpm run build
       - test -s dist/index.html || { echo "Build did not produce dist/index.html"; exit 1; }
@@ -44,6 +45,8 @@ phases:
       # Long-cache the fingerprinted assets, no-cache the HTML entrypoints.
       - aws s3 sync dist/ "s3://$SITE_BUCKET" --delete --exclude "*.html" --cache-control "public,max-age=31536000,immutable"
       - aws s3 sync dist/ "s3://$SITE_BUCKET" --delete --exclude "*" --include "*.html" --cache-control "public,max-age=0,must-revalidate"
+      - echo Invalidating CloudFront distribution $DISTRIBUTION_ID ...
+      - aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
 
 cache:
   paths:

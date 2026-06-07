@@ -1,226 +1,141 @@
 data "aws_caller_identity" "current" {}
 
-locals {
-  site_domain     = var.site_subdomain == "" ? var.domain : "${var.site_subdomain}.${var.domain}"
-  dns_record_name = var.site_subdomain == "" ? var.domain : var.site_subdomain
-
-  remote_state_object_arn = "arn:aws:s3:::${var.remote_state_bucket}/${var.remote_state_key}"
-  codebuild_project_arn   = "arn:aws:codebuild:${var.aws_region}:${data.aws_caller_identity.current.account_id}:project/${var.codebuild_project_name}"
-}
-
-# --- S3 static website hosting -------------------------------------------------
-
-resource "aws_s3_bucket" "site" {
-  bucket = var.bucket_name
-}
-
-resource "aws_s3_bucket_ownership_controls" "site" {
-  bucket = aws_s3_bucket.site.id
-
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-
-# The site is public, so the public-access block must allow a public bucket
-# policy. Cloudflare proxies the website endpoint and provides TLS.
-resource "aws_s3_bucket_public_access_block" "site" {
-  bucket = aws_s3_bucket.site.id
-
-  block_public_acls       = true
-  block_public_policy     = false
-  ignore_public_acls      = true
-  restrict_public_buckets = false
-}
-
-resource "aws_s3_bucket_website_configuration" "site" {
-  bucket = aws_s3_bucket.site.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  # Single-page site: serve index.html for unknown paths too.
-  error_document {
-    key = "index.html"
-  }
-}
-
-resource "aws_s3_bucket_policy" "site" {
-  bucket = aws_s3_bucket.site.id
-
-  depends_on = [aws_s3_bucket_public_access_block.site]
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.site.arn}/*"
-      },
-    ]
-  })
-}
-
-# --- Cloudflare DNS (proxied → provides TLS/CDN in front of the S3 endpoint) ---
-
 data "cloudflare_zone" "zone" {
-  count = var.manage_dns ? 1 : 0
-
   filter = {
     name = var.domain
   }
 }
 
-resource "cloudflare_dns_record" "site" {
-  count = var.manage_dns ? 1 : 0
-
-  zone_id = data.cloudflare_zone.zone[0].id
-  name    = local.dns_record_name
-  type    = "CNAME"
-  content = aws_s3_bucket_website_configuration.site.website_endpoint
-  proxied = true
-  ttl     = 1
+locals {
+  site_domain     = var.site_subdomain == "" ? var.domain : "${var.site_subdomain}.${var.domain}"
+  dns_record_name = var.site_subdomain == "" ? var.domain : var.site_subdomain
 }
 
-# --- CodeBuild: build the Astro site and sync dist/ to S3 ----------------------
+# --- ACM certificate (us-east-1, required by CloudFront) -----------------------
 
-resource "aws_iam_role" "codebuild_deploy" {
-  name = "${var.codebuild_project_name}-codebuild"
+module "certificate" {
+  source = "github.com/jch254/terraform-modules//acm-dns-validated-certificate?ref=1.18.0"
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "codebuild.amazonaws.com"
-        }
-      },
-    ]
-  })
+  providers = {
+    aws = aws.us_east_1
+  }
+
+  domain_name = local.site_domain
 }
 
-resource "aws_iam_role_policy" "codebuild_deploy" {
-  name = "${var.codebuild_project_name}-deploy"
-  role = aws_iam_role.codebuild_deploy.id
+# DNS validation records for the cert, created in Cloudflare.
+module "certificate_validation_records" {
+  source = "github.com/jch254/terraform-modules//cloudflare-dns-records?ref=1.18.0"
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-        ]
-        Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${var.codebuild_project_name}*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameters", "ssm:GetParameter"]
-        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cloudflare_api_token_parameter_name}"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetBucketLocation",
-          "s3:ListBucket",
-        ]
-        Resource = "arn:aws:s3:::${var.remote_state_bucket}"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject",
-        ]
-        Resource = local.remote_state_object_arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["s3:ListBucket", "s3:GetBucketLocation"]
-        Resource = aws_s3_bucket.site.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject",
-        ]
-        Resource = "${aws_s3_bucket.site.arn}/*"
-      },
-    ]
-  })
-}
-
-resource "aws_codebuild_project" "deploy" {
-  name         = var.codebuild_project_name
-  description  = "Build and deploy the Discogs Market Monitor frontend to S3"
-  service_role = aws_iam_role.codebuild_deploy.arn
-
-  artifacts {
-    type = "NO_ARTIFACTS"
-  }
-
-  environment {
-    compute_type    = var.codebuild_build_compute_type
-    image           = "${var.codebuild_build_docker_image}:${var.codebuild_build_docker_tag}"
-    type            = "LINUX_CONTAINER"
-    privileged_mode = false
-
-    environment_variable {
-      name  = "AWS_DEFAULT_REGION"
-      value = var.aws_region
-    }
-    environment_variable {
-      name  = "SITE_BUCKET"
-      value = aws_s3_bucket.site.id
-    }
-    environment_variable {
-      name  = "PUBLIC_API_BASE_URL"
-      value = var.api_base_url
-    }
-    environment_variable {
-      name  = "SITE_URL"
-      value = "https://${local.site_domain}"
-    }
-  }
-
-  source {
-    type            = "GITHUB"
-    location        = var.codebuild_source_location
-    buildspec       = var.codebuild_buildspec
-    git_clone_depth = 1
-  }
-
-  logs_config {
-    cloudwatch_logs {
-      status = "ENABLED"
+  zone_id = data.cloudflare_zone.zone.id
+  records = {
+    for key, record in module.certificate.validation_records : key => {
+      name    = record.name
+      type    = record.type
+      content = record.value
+      ttl     = 1
     }
   }
 }
 
-resource "aws_codebuild_webhook" "deploy" {
-  count = var.codebuild_webhook_enabled ? 1 : 0
+resource "aws_acm_certificate_validation" "site" {
+  provider = aws.us_east_1
 
-  project_name = aws_codebuild_project.deploy.name
+  certificate_arn         = module.certificate.arn
+  validation_record_fqdns = [for record in module.certificate_validation_records.records : record.name]
+}
 
-  filter_group {
-    filter {
-      type    = "EVENT"
-      pattern = "PUSH"
-    }
-    filter {
-      type    = "HEAD_REF"
-      pattern = "refs/heads/${var.codebuild_webhook_branch}"
+# --- Static hosting: CloudFront + private S3 (OAC) ----------------------------
+
+module "site" {
+  source = "github.com/jch254/terraform-modules//web-app?ref=1.18.0"
+
+  bucket_name = var.bucket_name
+  dns_names   = [local.site_domain]
+  acm_arn     = aws_acm_certificate_validation.site.certificate_arn
+}
+
+# --- Cloudflare DNS: CNAME the site to the CloudFront distribution ------------
+
+module "site_dns" {
+  count  = var.manage_dns ? 1 : 0
+  source = "github.com/jch254/terraform-modules//cloudflare-dns-records?ref=1.18.0"
+
+  zone_id = data.cloudflare_zone.zone.id
+  records = {
+    site = {
+      name = local.dns_record_name
+      type = "CNAME"
+      # CloudFront serves TLS via the ACM cert, so Cloudflare is DNS-only here.
+      content = module.site.cloudfront_domain_name
+      proxied = false
     }
   }
+}
+
+# --- CodeBuild: build the Astro site, sync dist/ to S3, invalidate CloudFront --
+
+module "codebuild_role" {
+  source = "github.com/jch254/terraform-modules//codebuild-terraform-role?ref=1.18.0"
+
+  name        = var.codebuild_project_name
+  environment = var.environment
+
+  enable_acm             = true
+  codebuild_project_arns = ["*"]
+
+  # Read the Cloudflare API token used by the Terraform cloudflare provider.
+  ssm_parameter_arns = [
+    "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.cloudflare_api_token_parameter_name}",
+  ]
+
+  # The build manages its own IAM role (named with the project prefix).
+  prefix_managed_services = ["iam_role"]
+
+  additional_policy_statements = [
+    # Terraform manages the bucket + CloudFront distribution; the build syncs
+    # objects to S3 and creates a CloudFront invalidation after each deploy.
+    {
+      Effect   = "Allow"
+      Action   = ["s3:*"]
+      Resource = ["*"]
+    },
+    {
+      Effect   = "Allow"
+      Action   = ["cloudfront:*"]
+      Resource = ["*"]
+    },
+    {
+      Effect   = "Allow"
+      Action   = ["logs:*"]
+      Resource = ["*"]
+    },
+  ]
+}
+
+module "codebuild_project" {
+  source = "github.com/jch254/terraform-modules//codebuild-project?ref=1.18.0"
+
+  name               = var.codebuild_project_name
+  description        = "Build and deploy the Discogs Market Monitor frontend to S3/CloudFront"
+  codebuild_role_arn = module.codebuild_role.role_arn
+  build_docker_image = var.codebuild_build_docker_image
+  build_docker_tag   = var.codebuild_build_docker_tag
+  build_compute_type = var.codebuild_build_compute_type
+  source_type        = "GITHUB"
+  source_location    = var.codebuild_source_location
+  buildspec          = var.codebuild_buildspec
+  git_clone_depth    = 1
+
+  environment_variables = [
+    { name = "AWS_DEFAULT_REGION", value = var.aws_region },
+    { name = "PUBLIC_API_BASE_URL", value = var.api_base_url },
+    { name = "SITE_URL", value = "https://${local.site_domain}" },
+  ]
+
+  webhook_enabled = var.codebuild_webhook_enabled
+  webhook_filter_groups = [[
+    { type = "EVENT", pattern = "PUSH" },
+    { type = "HEAD_REF", pattern = "refs/heads/${var.codebuild_webhook_branch}" },
+  ]]
 }
