@@ -42,6 +42,10 @@ After Serverless deploys, the API host is printed in the stack outputs (the `htt
 
 > The signup endpoint is unauthenticated for simplicity. For a public production deployment, front it with throttling/WAF or an API key and verify `destinationEmail` to prevent abuse.
 
+## Frontend (signup UI)
+
+A small self-service web UI for the same `POST /monitors` / `DELETE /monitors/{username}` API is hosted at **[discogs.603.nz](https://discogs.603.nz)** — register or unsubscribe a monitor without touching `curl`. It's a separate [Astro](https://astro.build) + Tailwind static site (private S3 served by CloudFront, TLS via ACM, DNS in Cloudflare) with its own Terraform stack and CI pipeline. The API base URL is baked in at build time via `PUBLIC_API_BASE_URL`. See [/frontend](./frontend) and [/frontend/infrastructure](./frontend/infrastructure).
+
 ## Technologies Used
 
 - [Serverless](https://github.com/serverless/serverless)
