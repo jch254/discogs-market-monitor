@@ -36,6 +36,10 @@ phases:
       # Read the bucket and CloudFront distribution the infra just provisioned.
       - export SITE_BUCKET="$(terraform -chdir=infrastructure/terraform output -raw site_bucket)"
       - export DISTRIBUTION_ID="$(terraform -chdir=infrastructure/terraform output -raw cloudfront_distribution_id)"
+      # Bake the live API base URL into the bundle (read from the infra output so
+      # it is always set, regardless of the CodeBuild project env timing).
+      - export PUBLIC_API_BASE_URL="$(terraform -chdir=infrastructure/terraform output -raw api_base_url)"
+      - 'test -n "$PUBLIC_API_BASE_URL" || { echo "PUBLIC_API_BASE_URL is empty"; exit 1; }'
       - echo Building Astro site...
       - pnpm run build
       - test -s dist/index.html || { echo "Build did not produce dist/index.html"; exit 1; }

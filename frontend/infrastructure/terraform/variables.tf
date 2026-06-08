@@ -31,7 +31,7 @@ variable "bucket_name" {
 variable "api_base_url" {
   description = "Base URL of the deployed Serverless httpApi, baked into the build as PUBLIC_API_BASE_URL."
   type        = string
-  default     = ""
+  default     = "https://7i61e7jcc2.execute-api.ap-southeast-2.amazonaws.com"
 }
 
 variable "remote_state_bucket" {
