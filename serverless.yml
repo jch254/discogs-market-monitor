@@ -13,6 +13,19 @@ provider:
   runtime: nodejs22.x
   stage: prod
   region: ap-southeast-2
+  # Browser signup form (discogs.603.nz) is cross-origin to the API, so enable
+  # CORS on the HTTP API. This also auto-handles the OPTIONS preflight.
+  httpApi:
+    cors:
+      allowedOrigins:
+        - https://discogs.603.nz
+        - http://localhost:4321
+      allowedMethods:
+        - OPTIONS
+        - POST
+        - DELETE
+      allowedHeaders:
+        - content-type
   environment:
     # Single physical DynamoDB table (created in infrastructure/ via the shared
     # dynamodb-single-table module). Holds ReleaseCheckState rows now and other
