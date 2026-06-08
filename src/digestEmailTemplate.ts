@@ -7,7 +7,7 @@ import { TransformedListing } from './interfaces';
 
 const DISCOGS_BASE_URL = 'https://www.discogs.com';
 
-const escapeHtml = (value: string): string =>
+export const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

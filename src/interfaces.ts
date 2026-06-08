@@ -14,6 +14,10 @@ export interface TransformedListing {
   format: string;
   title: string;
   year: number;
+  // Release cover thumbnail URL (optional — not every release has one) and the
+  // Discogs release id, used by the digest email for the image and release link.
+  thumbnail?: string;
+  releaseId: number;
 }
 
 export interface MarketMonitorEvent extends ScheduledEvent {

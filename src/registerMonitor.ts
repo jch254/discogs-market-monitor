@@ -1,5 +1,6 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { deleteMonitor, getMonitor, putMonitor } from './monitorRepository';
+import { sendRegistrationConfirmationEmail } from './emailClient';
 
 // Self-service signup API. A prospective user POSTs their Discogs username, the
 // countries they want to watch and where to email the digest; this registers a
@@ -102,6 +103,18 @@ export async function handler(
       ? body.discogsToken.trim()
       : undefined,
   });
+
+  // Best-effort confirmation email. The monitor is already stored, so never
+  // fail registration if the send fails (e.g. transient Resend error).
+  try {
+    await sendRegistrationConfirmationEmail(
+      monitor.destinationEmail,
+      monitor.username,
+      monitor.shipsFrom,
+    );
+  } catch (error: any) {
+    console.error('Failed to send registration confirmation email', error);
+  }
 
   // Never echo the stored token back to the caller.
   const { discogsToken, ...safe } = monitor;
