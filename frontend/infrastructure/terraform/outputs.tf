@@ -18,6 +18,11 @@ output "site_url" {
   value       = "https://${local.site_domain}"
 }
 
+output "api_base_url" {
+  description = "httpApi base URL baked into the build as PUBLIC_API_BASE_URL."
+  value       = var.api_base_url
+}
+
 output "codebuild_project_name" {
   description = "Name of the CodeBuild project that builds and deploys the site."
   value       = module.codebuild_project.project_name
