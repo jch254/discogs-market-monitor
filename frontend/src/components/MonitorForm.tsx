@@ -327,6 +327,10 @@ export default function MonitorForm() {
           )}
         </button>
       </form>
+
+      <footer className="mt-8 border-t border-brand-border/30 pt-4 text-center text-xs text-brand-text/60">
+        Built by <a href="https://jch254.com/" className="underline hover:text-brand-text">Jordan Hornblow</a>
+      </footer>
     </div>
   );
 }
