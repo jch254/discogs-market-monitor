@@ -25,10 +25,14 @@ interface RetryOptions {
   baseDelayMs?: number;
   maxDelayMs?: number;
   label?: string;
+  // Which errors to retry. Defaults to rate-limit (429) errors only; callers
+  // can widen this (e.g. the sell-page scraper also retries Cloudflare blocks
+  // after rotating its session). Non-matching errors propagate immediately.
+  shouldRetry?: (error: any) => boolean;
 }
 
-// Retries `fn` only when it fails with a rate-limit (429) error, using
-// exponential backoff with jitter. All other errors propagate immediately.
+// Retries `fn` when it fails with a retryable error (per `shouldRetry`), using
+// exponential backoff with jitter.
 export const withRetry = async <T>(
   fn: () => Promise<T>,
   {
@@ -36,6 +40,7 @@ export const withRetry = async <T>(
     baseDelayMs = 1000,
     maxDelayMs = 30000,
     label = 'discogs request',
+    shouldRetry = isRateLimitError,
   }: RetryOptions = {},
 ): Promise<T> => {
   let attempt = 0;
@@ -44,7 +49,7 @@ export const withRetry = async <T>(
     try {
       return await fn();
     } catch (error: any) {
-      if (!isRateLimitError(error) || attempt >= maxRetries) {
+      if (!shouldRetry(error) || attempt >= maxRetries) {
         throw error;
       }
 
@@ -54,11 +59,12 @@ export const withRetry = async <T>(
 
       attempt += 1;
 
-      console.log('HIT DISCOGS RATE LIMIT, BACKING OFF BEFORE RETRY', {
+      console.log('RETRYABLE DISCOGS ERROR, BACKING OFF BEFORE RETRY', {
         label,
         attempt,
         maxRetries,
         delayMs,
+        message: error?.message,
       });
 
       await sleep(delayMs);
