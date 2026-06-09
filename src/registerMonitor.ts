@@ -1,5 +1,6 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { deleteMonitor, getMonitor, putMonitor } from './monitorRepository';
+import { startMonitorExecution } from './monitorWorkflow';
 import { sendRegistrationConfirmationEmail } from './emailClient';
 
 // Self-service signup API. A prospective user POSTs their Discogs username, the
@@ -114,6 +115,15 @@ export async function handler(
     );
   } catch (error: any) {
     console.error('Failed to send registration confirmation email', error);
+  }
+
+  // Kick off an immediate first run so the user gets their initial digest now
+  // rather than waiting up to 12h for the next scheduled dispatch. Best-effort:
+  // the monitor is stored and the schedule will pick it up regardless.
+  try {
+    await startMonitorExecution(monitor);
+  } catch (error: any) {
+    console.error('Failed to start initial monitor run', error);
   }
 
   // Never echo the stored token back to the caller.

@@ -24,19 +24,22 @@ export const sendWantlistDigestEmail = async (
   shipsFrom: string,
   listings: TransformedListing[],
 ) => {
-  try {
-    await getResendClient().emails.send({
-      to: destinationEmail,
-      from: process.env.SENDER_EMAIL || '',
-      subject: `Discogs Wantlist Digest for ${username} shipping from ${formatShipsFrom(
-        shipsFrom,
-      )}`,
-      html: buildDigestHtml(username, shipsFrom, listings),
-      text: buildDigestText(username, shipsFrom, listings),
-    });
-  } catch (error: any) {
-    console.error(error);
-    throw error;
+  // The Resend SDK resolves with { data, error } instead of throwing on API
+  // errors, so an unchecked await would silently swallow a failed send. Check
+  // error explicitly and throw so the caller (and CloudWatch) sees the failure.
+  const { error } = await getResendClient().emails.send({
+    to: destinationEmail,
+    from: process.env.SENDER_EMAIL || '',
+    subject: `Discogs Wantlist Digest for ${username} shipping from ${formatShipsFrom(
+      shipsFrom,
+    )}`,
+    html: buildDigestHtml(username, shipsFrom, listings),
+    text: buildDigestText(username, shipsFrom, listings),
+  });
+
+  if (error) {
+    console.error('Resend failed to send digest email', error);
+    throw new Error(`Resend failed to send digest email: ${error.message}`);
   }
 };
 
@@ -94,11 +97,18 @@ export const sendRegistrationConfirmationEmail = async (
     'To change or cancel, visit https://discogs.603.nz',
   ].join('\n');
 
-  await getResendClient().emails.send({
+  const { error } = await getResendClient().emails.send({
     to: destinationEmail,
     from: process.env.SENDER_EMAIL || '',
     subject: `You're subscribed - Discogs wantlist monitor for ${username}`,
     html,
     text,
   });
+
+  if (error) {
+    console.error('Resend failed to send confirmation email', error);
+    throw new Error(
+      `Resend failed to send confirmation email: ${error.message}`,
+    );
+  }
 };

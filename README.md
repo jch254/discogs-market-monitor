@@ -2,11 +2,11 @@
 
 ![Build Status](https://codebuild.ap-southeast-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiUDhXeDRQQlY5UXRDRDY1RHVDSm5sK1d6TEp0UDR0QTl3QXE4V0NoZkZKZFZ6SVp3WUJBSFVtdW9iMm5CQlVzbVl5b2hHZi8zUEptZGMzdmo3b0JOcHlZPSIsIml2UGFyYW1ldGVyU3BlYyI6Inh5aTgyT0NBa2VnVmxtVFkiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
 
-Discogs Wantlist Marketplace Monitor powered by Serverless, Step Functions, TypeScript and Node.js. The monitor scans the Discogs Marketplace for listings from the specified user's wantlist in the specified countries and sends a digest email of all matching listings to the specified email address. It runs as an AWS Step Functions workflow (scheduled every twelve hours via EventBridge). This saves manually searching through your wantlist for local listings.
+Discogs Wantlist Marketplace Monitor powered by Serverless, Step Functions, TypeScript and Node.js. The monitor scans the Discogs Marketplace for listings from the specified user's wantlist in the specified countries and sends a digest email of all matching listings to the specified email address. It runs as an AWS Step Functions workflow — immediately when you sign up, then on a schedule every twelve hours via EventBridge. This saves manually searching through your wantlist for local listings.
 
 Processing is incremental and rate-limit-safe: each release is checked independently, results are deduped in DynamoDB, and only newly-seen listings are emailed.
 
-It is multi-tenant: anyone can self-register their own monitor via a small HTTP API. A scheduled dispatcher then runs the workflow independently for every registered user.
+It is multi-tenant: anyone can self-register their own monitor via a small HTTP API. Registering runs the workflow immediately for that user, and a scheduled dispatcher then re-runs it independently for every registered user every twelve hours.
 
 ## Sign up (register your own monitor)
 
@@ -30,7 +30,7 @@ curl -X POST https://<your-api-host>/monitors \
 - `destinationEmail` (required) — where the digest is emailed.
 - `discogsToken` (optional) — a [Discogs personal access token](https://www.discogs.com/settings/developers). Required only to read a **private** wantlist; public wantlists work without it (the shared service token is used as a fallback). The token is stored but never returned by the API.
 
-The endpoint upserts by username, so re-posting updates your config. Posting prints the stored config back (with `hasDiscogsToken` instead of the secret).
+The endpoint upserts by username, so re-posting updates your config. Posting prints the stored config back (with `hasDiscogsToken` instead of the secret), sends a confirmation email, and kicks off an immediate first run so you don't wait up to twelve hours for your first digest.
 
 Unsubscribe:
 
@@ -55,11 +55,12 @@ A small self-service web UI for the same `POST /monitors` / `DELETE /monitors/{u
 - [TypeScript](https://github.com/microsoft/typescript)
 - [Node.js](https://github.com/nodejs/node)
 - [Disconnect](https://github.com/bartve/disconnect)
+- [node-tls-client](https://github.com/Sahil1337/node-tls-client) (browser-TLS fetch of Discogs sell pages)
 - [Resend](https://github.com/resendlabs/resend-node)
 
 ## Architecture
 
-Users self-register monitors through an HTTP API. An EventBridge schedule then triggers a dispatcher every twelve hours that lists every registered monitor and starts one isolated Step Functions execution per user. Within an execution, the unit of work is a single `(userId, releaseId)`, not the whole wantlist, so execution scales linearly and never times out.
+Users self-register monitors through an HTTP API; registering starts an immediate Step Functions execution for that user. An EventBridge schedule then triggers a dispatcher every twelve hours that lists every registered monitor and starts one isolated execution per user. Both paths start the same state machine. Within an execution, the unit of work is a single `(userId, releaseId)`, not the whole wantlist, so execution scales linearly and never times out.
 
 ```
                  POST /monitors                    DELETE /monitors/{username}
@@ -67,9 +68,12 @@ Users self-register monitors through an HTTP API. An EventBridge schedule then t
                        ▼                                       ▼
               ┌──────────────────── registerMonitor Lambda ───────────────────┐
               │  validate + upsert Monitor (PK MONITOR  SK MONITOR#<username>) │
+              │  + send confirmation email & start an immediate first run      │
               └───────────────────────────────┬───────────────────────────────┘
                                                ▼
-                                       DynamoDB (Monitors)
+                              DynamoDB (Monitors) + StartExecution
+                                  (immediate first run on the same
+                                   state machine the schedule uses, below)
 
 EventBridge (rate: 12h)
         │
@@ -84,7 +88,7 @@ EventBridge (rate: 12h)
 │                                                              │
 │  GetWantlist ──► Map (DISTRIBUTED, MaxConcurrency 2) ──► SendDigest
 │  (one task         │  CheckReleaseMarketplace                │
-│   per release;     │  · RSS-enumerate current listing ids    │
+│   per release;     │  · scrape sell page for listing ids     │
 │   uses user's      │  · fetch only NEW ids via Discogs API   │
 │   token)           │  · filter shipsFrom                      │
 │                    │  · record new matches (un-notified)     │
