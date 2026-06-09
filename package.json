@@ -19,8 +19,8 @@
     "disconnect": "^1.2.2",
     "lodash": "^4.17.23",
     "node": "^25.8.2",
-    "resend": "^6.10.0",
-    "rss-parser": "^3.13.0"
+    "node-tls-client": "^2.1.0",
+    "resend": "^6.10.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.161",

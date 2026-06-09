@@ -7,21 +7,6 @@ export function debugLog(...params: any[]) {
   }
 }
 
-// Extracts valid numeric marketplace listing ids from RSS marketplace items.
-// Shared so both the wantlist scan and the per-release state share one source
-// of truth and never emit undefined/non-numeric ids.
-export const extractMarketplaceListingIds = (
-  marketplaceItems: { link?: string; id?: string }[],
-): string[] => {
-  return marketplaceItems
-    .map((marketplaceItem) => {
-      const source = marketplaceItem.link ?? marketplaceItem.id;
-
-      return typeof source === 'string' ? source.split('/').pop() : undefined;
-    })
-    .filter((id): id is string => typeof id === 'string' && /^\d+$/.test(id));
-};
-
 export const transformListing = (
   listing: UserTypes.Listing,
 ): TransformedListing => {

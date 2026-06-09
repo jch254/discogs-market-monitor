@@ -8,6 +8,16 @@ plugins:
 package:
   individually: true
 
+# node-tls-client impersonates a browser TLS handshake to read Discogs sell
+# pages (see src/marketplaceRss.ts). It loads a native helper via koffi, which
+# esbuild cannot bundle, so keep both external; Serverless ships them as real
+# node_modules in the deployment package instead.
+build:
+  esbuild:
+    external:
+      - koffi
+      - node-tls-client
+
 provider:
   name: aws
   runtime: nodejs22.x
@@ -34,6 +44,8 @@ provider:
     DISCOGS_USER_TOKEN: ${ssm:/discogs-market-monitor/discogs_user_token, env:DISCOGS_USER_TOKEN, ''}
     RESEND_API_KEY: ${ssm:/discogs-market-monitor/resend_api_key, env:RESEND_API_KEY, ''}
     SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email, env:SENDER_EMAIL, ''}
+    # The scheduled dispatcher and the signup API both start workflow executions.
+    STATE_MACHINE_ARN: arn:aws:states:${aws:region}:${aws:accountId}:stateMachine:${self:service}-market-monitor
   iam:
     role:
       statements:
@@ -74,8 +86,6 @@ functions:
     handler: src/dispatchMonitors.handler
     memorySize: 256
     timeout: 60
-    environment:
-      STATE_MACHINE_ARN: arn:aws:states:${aws:region}:${aws:accountId}:stateMachine:${self:service}-market-monitor
     events:
       - schedule:
           rate:
