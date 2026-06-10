@@ -158,10 +158,10 @@ stepFunctions:
             # by successful release checks. So a release that Cloudflare
             # refuses to serve even after session rotation and Step Functions
             # retries costs one release, not the whole run - while a run where
-            # more than 15% of releases fail still fails loudly. (Fixed value:
-            # serverless-step-functions compiles this at package time, so it is
-            # not runtime-env-configurable.)
-            ToleratedFailurePercentage: 15
+            # more than a quarter of releases fail still fails loudly. (Fixed
+            # value: serverless-step-functions compiles this at package time,
+            # so it is not runtime-env-configurable.)
+            ToleratedFailurePercentage: 25
             ItemProcessor:
               ProcessorConfig:
                 Mode: DISTRIBUTED
@@ -194,8 +194,9 @@ stepFunctions:
 resources:
   Resources:
     # Custom execution role for the state machine. A Distributed Map runs child
-    # executions, so it needs states:StartExecution on itself plus Describe/Stop
-    # on its executions, and the EventBridge managed-rule permissions.
+    # executions, so it needs states:StartExecution on itself plus
+    # Describe/Stop/Redrive on its executions, and the EventBridge managed-rule
+    # permissions.
     MarketMonitorStateMachineRole:
       Type: AWS::IAM::Role
       Properties:
@@ -225,6 +226,10 @@ resources:
                   Action:
                     - states:DescribeExecution
                     - states:StopExecution
+                    # Redriving an execution whose Distributed Map failed makes
+                    # this role redrive the Map Run's child executions, so the
+                    # console "Redrive from failure" fails without this.
+                    - states:RedriveExecution
                   Resource:
                     - arn:aws:states:${aws:region}:${aws:accountId}:execution:${self:service}-market-monitor/*
                 - Effect: Allow
