@@ -114,7 +114,10 @@ export async function handler(
       monitor.shipsFrom,
     );
   } catch (error: any) {
-    console.error('Failed to send registration confirmation email', error);
+    // Log only the (address-free) message - never the raw Resend error object.
+    console.error('Failed to send registration confirmation email', {
+      message: error?.message,
+    });
   }
 
   // Kick off an immediate first run so the user gets their initial digest now

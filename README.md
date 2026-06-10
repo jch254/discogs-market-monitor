@@ -354,7 +354,14 @@ You must [sign up for/create a Discogs app](https://www.discogs.com/settings/dev
 - **DISCOGS_THROTTLE_MS** (opt, default `1100`) - Fixed delay between external Discogs calls
 - **RECENTLY_CHECKED_MS** (opt, default `3600000`) - Releases checked more recently than this are skipped
 - **STATE_TTL_MS** / **LISTING_TTL_MS** (opt, default 30 days) - TTL for `ReleaseCheckState` / `MarketplaceListingState` rows
+- **SCRAPER_REQUEST_TIMEOUT_MS** (opt, default `25000`) - Hard per-request timeout for sell-page scrapes
+- **SCRAPER_MAX_ATTEMPTS** (opt, default `4`) - In-process scrape attempts per release (bounded 1-6; trimmed automatically if the combination with the timeout would exceed the Lambda budget)
+- **SCRAPER_CIRCUIT_FAILURE_THRESHOLD** (opt, default `3`) - Consecutive exhausted scrape failures before the warm-container circuit breaker opens
+- **SCRAPER_CIRCUIT_OPEN_MS** (opt, default `120000`) - How long an open circuit fails fast without calling Discogs
+- **SCRAPER_PROFILES** (opt, default `safari_16_0,firefox_117`) - Comma-separated browser TLS profiles; unknown names are ignored with a warning (see `src/scraperConfig.ts`)
 - **DEBUG** (opt) - If true, enables debug logging to console
+
+All `SCRAPER_*` values are validated at startup ([src/scraperConfig.ts](./src/scraperConfig.ts)): zero/negative/NaN/absurd values fall back to safe defaults or are clamped, so misconfiguration can never produce a zero-timeout or an unbounded retry loop.
 
   **All required environment variables above must be set before `pnpm run dev` command. These can also be set via a .env file.**
 
@@ -383,9 +390,35 @@ pnpm install
 pnpm run dev --path test.json
 ```
 
+## Resilience & operations
+
+Discogs **retired the marketplace RSS endpoint** (`/sell/mplistrss`) in June 2026 — it returns a Discogs-branded 403 to every client and must not be restored. Listing discovery now scrapes the public sell page (`/sell/release/{id}`) through [node-tls-client](https://github.com/Sahil1337/node-tls-client), which impersonates a real browser TLS handshake to pass Cloudflare bot management. This is **best-effort by nature**: Discogs/Cloudflare changes can degrade it at any time, so the system is built to degrade per-release, not per-run:
+
+- **One bad release costs one release.** Each release is checked in its own Distributed Map item. Cloudflare blocks rotate the scraper session (fresh cookies + TLS fingerprint) and retry with bounded, jittered backoff; if a release still fails, only that Map item fails. The Map tolerates up to 15% item failures (`ToleratedFailurePercentage`), so `SendDigest` still runs and emails everything that succeeded — it reads the un-notified DynamoDB ledger, never Map output.
+- **Failed scrapes are never recorded as "no listings".** `ReleaseCheckState` is only written after the sell page was actually fetched and parsed (a genuine zero-listing page is verified by sell-page markers before an empty result is trusted). Failed releases keep their old state and are retried by Step Functions now and by the next scheduled run.
+- **A poisoned warm container stops hammering Discogs.** After 3 consecutive releases exhaust their scrape attempts, a module-local circuit breaker opens for 2 minutes and fails fast (typed `circuit_open`, no network calls), letting Step Functions retry later — often on a different container.
+- **Failed digest emails never mark listings notified.** The Resend SDK returns `{ data, error }` without throwing; an `error` is converted to a thrown `EmailSendError`, the `SendDigest` Lambda fails and Step Functions retries. Listings are marked notified strictly after a confirmed send, so the failure mode is a duplicated digest, never a lost listing.
+
+### Diagnosing incidents in CloudWatch
+
+Scraper and workflow steps emit one-line structured JSON logs. Search by `event`:
+
+`scraper_request_start`, `scraper_request_success`, `scraper_retry_scheduled`, `scraper_session_rotated`, `scraper_challenge_detected`, `scraper_request_timeout`, `scraper_attempt_failed`, `scraper_attempts_exhausted`, `scraper_circuit_opened`, `scraper_config_invalid`, `release_check_started`, `release_check_recently_checked_skip`, `release_check_success`, `release_check_failed`, `digest_send_attempted`, `digest_send_failed`, `digest_send_succeeded`, `digest_mark_notified_started`, `digest_mark_notified_succeeded`
+
+Failures carry a typed `errorType` (`blocked` | `timeout` | `transport` | `server_error` | `rate_limited` | `challenge` | `parse_error` | `circuit_open` | `unexpected`) plus attempt counts, HTTP status, profile and duration. Logs never include tokens, cookies, headers, HTML bodies or email addresses.
+
+### Packaging note (node-tls-client / koffi)
+
+`node-tls-client` loads a native helper via `koffi` and downloads a platform shared library into `/tmp` on first use (the Lambdas are not in a VPC, so they have the required internet egress). Neither can be esbuild-bundled: `serverless.yml` keeps them in `build.esbuild.external` so they ship as real `node_modules`. After any dependency or packaging change, run `pnpm run verify:package` — it packages the service and asserts the koffi Linux x64 binary, node-tls-client and its cookie dependencies are in the artifact and that the generated state machine keeps its tolerated-failure and retry config.
+
 ## Testing
 
-TBC
+```bash
+pnpm run test        # vitest unit tests (scraper, retry, circuit breaker, state, email)
+pnpm run typecheck   # tsc --noEmit
+pnpm run lint        # tslint
+pnpm run verify:package  # packages and inspects the artifact + generated ASL
+```
 
 ## Deployment/Infrastructure
 

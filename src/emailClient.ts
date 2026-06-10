@@ -16,18 +16,38 @@ const getResendClient = () => {
   return resend;
 };
 
+// Thrown when Resend reports a failed send. The message carries only the
+// Resend error *name* (e.g. validation_error): Resend messages can echo the
+// destination address, and thrown messages end up in CloudWatch and the Step
+// Functions execution history, which must stay free of email addresses.
+export class EmailSendError extends Error {
+  public readonly resendErrorName: string;
+
+  constructor(emailKind: string, resendErrorName: string | undefined) {
+    super(
+      `Resend failed to send ${emailKind} email (${resendErrorName ?? 'unknown_error'})`,
+    );
+
+    this.name = 'EmailSendError';
+    this.resendErrorName = resendErrorName ?? 'unknown_error';
+  }
+}
+
 // Sends the digest from already-transformed listings. Called by the Step
 // Functions SendDigest step from un-notified MarketplaceListingState rows.
+// Returns the Resend message id on success; throws EmailSendError on failure
+// so the Lambda fails and Step Functions retries (and listings are NOT marked
+// notified).
 export const sendWantlistDigestEmail = async (
   destinationEmail: string,
   username: string,
   shipsFrom: string,
   listings: TransformedListing[],
-) => {
+): Promise<{ id?: string }> => {
   // The Resend SDK resolves with { data, error } instead of throwing on API
   // errors, so an unchecked await would silently swallow a failed send. Check
   // error explicitly and throw so the caller (and CloudWatch) sees the failure.
-  const { error } = await getResendClient().emails.send({
+  const { data, error } = await getResendClient().emails.send({
     to: destinationEmail,
     from: process.env.SENDER_EMAIL || '',
     subject: `Discogs Wantlist Digest for ${username} shipping from ${formatShipsFrom(
@@ -38,9 +58,10 @@ export const sendWantlistDigestEmail = async (
   });
 
   if (error) {
-    console.error('Resend failed to send digest email', error);
-    throw new Error(`Resend failed to send digest email: ${error.message}`);
+    throw new EmailSendError('digest', error.name);
   }
+
+  return { id: data?.id };
 };
 
 // Sends a one-off confirmation when a monitor is registered/updated via the
@@ -97,7 +118,7 @@ export const sendRegistrationConfirmationEmail = async (
     'To change or cancel, visit https://discogs.603.nz',
   ].join('\n');
 
-  const { error } = await getResendClient().emails.send({
+  const { data, error } = await getResendClient().emails.send({
     to: destinationEmail,
     from: process.env.SENDER_EMAIL || '',
     subject: `You're subscribed - Discogs wantlist monitor for ${username}`,
@@ -106,9 +127,8 @@ export const sendRegistrationConfirmationEmail = async (
   });
 
   if (error) {
-    console.error('Resend failed to send confirmation email', error);
-    throw new Error(
-      `Resend failed to send confirmation email: ${error.message}`,
-    );
+    throw new EmailSendError('confirmation', error.name);
   }
+
+  return { id: data?.id };
 };
