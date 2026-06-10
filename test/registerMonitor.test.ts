@@ -1,14 +1,19 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sendRegistrationConfirmationEmail, EmailSendError } from '../src/emailClient';
-import { putMonitor } from '../src/monitorRepository';
+import { deleteMonitor, getMonitor, putMonitor } from '../src/monitorRepository';
 import { startMonitorExecution } from '../src/monitorWorkflow';
 import { handler } from '../src/registerMonitor';
+import { purgeUserState } from '../src/userStateRepository';
 
 vi.mock('../src/monitorRepository', () => ({
   getMonitor: vi.fn(),
   putMonitor: vi.fn(),
   deleteMonitor: vi.fn(),
+}));
+
+vi.mock('../src/userStateRepository', () => ({
+  purgeUserState: vi.fn(),
 }));
 
 vi.mock('../src/monitorWorkflow', () => ({
@@ -25,9 +30,12 @@ vi.mock('../src/emailClient', async (importOriginal) => {
   };
 });
 
+const mockedGetMonitor = vi.mocked(getMonitor);
 const mockedPutMonitor = vi.mocked(putMonitor);
+const mockedDeleteMonitor = vi.mocked(deleteMonitor);
 const mockedConfirmation = vi.mocked(sendRegistrationConfirmationEmail);
 const mockedStartExecution = vi.mocked(startMonitorExecution);
+const mockedPurgeUserState = vi.mocked(purgeUserState);
 
 const DESTINATION = 'private-address@example.com';
 
@@ -39,6 +47,12 @@ const postEvent = (): APIGatewayProxyEventV2 =>
       shipsFrom: 'New Zealand',
       destinationEmail: DESTINATION,
     }),
+  }) as any;
+
+const deleteEvent = (username: string): APIGatewayProxyEventV2 =>
+  ({
+    requestContext: { http: { method: 'DELETE' } },
+    pathParameters: { username },
   }) as any;
 
 beforeEach(() => {
@@ -79,5 +93,45 @@ describe('registerMonitor handler', () => {
     expect(consoleError).toHaveBeenCalled();
     const logged = JSON.stringify(consoleError.mock.calls);
     expect(logged).not.toContain(DESTINATION);
+  });
+
+  it('purges the user state partition on unregister, keyed by stored casing', async () => {
+    mockedGetMonitor.mockResolvedValue({
+      username: 'Jordy',
+      shipsFrom: 'New Zealand',
+      destinationEmail: DESTINATION,
+    } as any);
+    mockedPurgeUserState.mockResolvedValue(42);
+
+    const response: any = await handler(deleteEvent('jordy'));
+
+    expect(response.statusCode).toBe(200);
+    // State rows are keyed by the username as stored, not the path parameter.
+    expect(mockedPurgeUserState).toHaveBeenCalledWith('Jordy');
+    expect(mockedDeleteMonitor).toHaveBeenCalledWith('jordy');
+    expect(JSON.parse(response.body)).toMatchObject({ purgedStateRows: 42 });
+  });
+
+  it('keeps the monitor when the purge fails so the DELETE can be retried', async () => {
+    mockedGetMonitor.mockResolvedValue({
+      username: 'jordy',
+      shipsFrom: 'New Zealand',
+      destinationEmail: DESTINATION,
+    } as any);
+    mockedPurgeUserState.mockRejectedValue(new Error('throttled'));
+
+    await expect(handler(deleteEvent('jordy'))).rejects.toThrow('throttled');
+
+    expect(mockedDeleteMonitor).not.toHaveBeenCalled();
+  });
+
+  it('does not purge anything for an unknown username', async () => {
+    mockedGetMonitor.mockResolvedValue(undefined);
+
+    const response: any = await handler(deleteEvent('ghost'));
+
+    expect(response.statusCode).toBe(404);
+    expect(mockedPurgeUserState).not.toHaveBeenCalled();
+    expect(mockedDeleteMonitor).not.toHaveBeenCalled();
   });
 });

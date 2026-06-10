@@ -17,6 +17,10 @@ env:
     TF_VAR_build_compute_type: "BUILD_GENERAL1_MEDIUM"
     REMOTE_STATE_BUCKET: "jch254-terraform-remote-state"
     REMOTE_STATE_REGION: "ap-southeast-4"
+  # Surfaced in the shared-platform build notification subject/body.
+  exported-variables:
+    - COMMIT_MESSAGE
+    - COMMIT_SHA
 
 phases:
   install:
@@ -35,6 +39,8 @@ phases:
 
   build:
     commands:
+      - export COMMIT_MESSAGE="$(git log -1 --pretty=%s 2>/dev/null || echo '')"
+      - export COMMIT_SHA="${CODEBUILD_RESOLVED_SOURCE_VERSION:-$CODEBUILD_SOURCE_VERSION}"
       - ./infrastructure/deploy-infrastructure.bash
       # Packages and asserts the artifact contains the koffi linux_x64 native
       # binary + node-tls-client deps, and that the state machine keeps its

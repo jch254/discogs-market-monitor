@@ -67,6 +67,8 @@ provider:
             - dynamodb:PutItem
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
+            # Unregister purges the whole USER#<userId> partition in batches.
+            - dynamodb:BatchWriteItem
             - dynamodb:Query
           Resource:
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-entities
