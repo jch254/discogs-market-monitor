@@ -41,9 +41,12 @@ echo "$listing" | grep -q "cookie-parser" \
   || fail "node-tls-client dependency cookie-parser missing from $ZIP"
 
 # The ASL is embedded in the template as an escaped JSON string, so quotes
-# appear as \" - match both forms.
-grep -Eq 'ToleratedFailurePercentage\\?": 15' "$TEMPLATE" \
-  || fail "ProcessReleases Map ToleratedFailurePercentage: 15 missing from generated ASL"
+# appear as \" - match both forms. The expected threshold comes from
+# serverless.yml so tuning it there can't silently drift from this check.
+tolerated=$(grep -oE 'ToleratedFailurePercentage: [0-9]+' serverless.yml | grep -oE '[0-9]+')
+[[ -n "$tolerated" ]] || fail "ToleratedFailurePercentage not found in serverless.yml"
+grep -Eq "ToleratedFailurePercentage\\\\?\": $tolerated" "$TEMPLATE" \
+  || fail "ProcessReleases Map ToleratedFailurePercentage: $tolerated missing from generated ASL"
 grep -Eq 'MaxConcurrency\\?": 2' "$TEMPLATE" \
   || fail "ProcessReleases Map MaxConcurrency: 2 missing from generated ASL"
 grep -Eq 'MaxAttempts\\?": 3' "$TEMPLATE" \
@@ -52,4 +55,4 @@ grep -Eq 'MaxAttempts\\?": 3' "$TEMPLATE" \
 echo "Package verification passed:"
 echo "  - koffi linux_x64 native binary packaged"
 echo "  - node-tls-client + cookie deps packaged"
-echo "  - ASL has ToleratedFailurePercentage 15, MaxConcurrency 2, bounded Retry"
+echo "  - ASL has ToleratedFailurePercentage $tolerated, MaxConcurrency 2, bounded Retry"
