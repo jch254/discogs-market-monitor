@@ -1,7 +1,9 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
+import { logEvent } from './log';
 import { deleteMonitor, getMonitor, putMonitor } from './monitorRepository';
 import { startMonitorExecution } from './monitorWorkflow';
 import { sendRegistrationConfirmationEmail } from './emailClient';
+import { purgeUserState } from './userStateRepository';
 
 // Self-service signup API. A prospective user POSTs their Discogs username, the
 // countries they want to watch and where to email the digest; this registers a
@@ -53,9 +55,22 @@ export async function handler(
       return json(404, { message: 'monitor not found' });
     }
 
+    // Purge the user's workflow state (release check state + listing ledger)
+    // before removing the monitor row, so a re-registration starts from a
+    // clean slate instead of inheriting stale lastSeenListingIds. Purge-first
+    // ordering keeps a failed DELETE retryable: if the purge throws, the
+    // monitor still exists and the client can simply retry. State rows are
+    // keyed by the stored username casing, not the path parameter's.
+    const purgedStateRows = await purgeUserState(existing.username);
+
     await deleteMonitor(username);
 
-    return json(200, { message: 'monitor removed', username });
+    logEvent('monitor_unregistered', {
+      userId: existing.username,
+      purgedStateRows,
+    });
+
+    return json(200, { message: 'monitor removed', username, purgedStateRows });
   }
 
   let body: RegisterBody;

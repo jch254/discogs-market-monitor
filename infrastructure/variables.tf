@@ -41,3 +41,8 @@ variable "build_compute_type" {
   description = "CodeBuild compute type (e.g. BUILD_GENERAL1_SMALL)"
   default     = ""
 }
+
+variable "build_notifier_lambda_function_name" {
+  description = "Name of the shared-platform build notification formatter Lambda in this project's region"
+  default     = "shared-platform-ap-southeast-2-build-notification-formatter"
+}

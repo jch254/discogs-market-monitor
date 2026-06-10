@@ -8,6 +8,16 @@ provider "aws" {
   region = var.region
 }
 
+data "aws_caller_identity" "current" {}
+
+locals {
+  # shared-platform deploys one build-notifier core (SNS topic + formatter
+  # Lambda) per CI region, because EventBridge can only invoke a same-region
+  # Lambda. This project's CodeBuild runs in var.region (ap-southeast-2), so
+  # subscribe to the formatter shared-platform deploys there.
+  build_notifier_lambda_function_arn = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:${var.build_notifier_lambda_function_name}"
+}
+
 # CodeBuild role for the CI build that runs both Terraform (this root) and
 # `serverless deploy` (CloudFormation creating Lambda, Step Functions, API
 # Gateway, EventBridge). The module models the least-privilege Terraform-managed
@@ -31,6 +41,10 @@ module "codebuild_role" {
     "event_rule",
     "dynamodb_table",
   ]
+
+  # The build-notifications subscription adds an EventBridge invoke permission
+  # on the shared formatter Lambda, which isn't covered by the prefix grants.
+  lambda_permission_function_arns = [local.build_notifier_lambda_function_arn]
 
   additional_policy_statements = [
     # serverless deploy is CloudFormation-driven and manages its own deployment
@@ -96,6 +110,11 @@ module "codebuild_project" {
     { type = "EVENT", pattern = "PUSH" },
     { type = "HEAD_REF", pattern = "refs/heads/master" },
   ]]
+
+  # Email build success/failure notifications via the shared-platform notifier.
+  build_notifier_lambda_function_arn = local.build_notifier_lambda_function_arn
+  build_notifier_app_url             = "https://discogs.603.nz"
+  build_notifier_github_repo_url     = trimsuffix(var.source_location, ".git")
 }
 
 # Single physical DynamoDB table for app state (single-table design).
