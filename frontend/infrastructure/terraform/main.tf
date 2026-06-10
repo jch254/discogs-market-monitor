@@ -9,6 +9,12 @@ data "cloudflare_zone" "zone" {
 locals {
   site_domain     = var.site_subdomain == "" ? var.domain : "${var.site_subdomain}.${var.domain}"
   dns_record_name = var.site_subdomain == "" ? var.domain : var.site_subdomain
+
+  # shared-platform deploys one build-notifier core (SNS topic + formatter
+  # Lambda) per CI region, because EventBridge can only invoke a same-region
+  # Lambda. This project's CodeBuild runs in var.aws_region (ap-southeast-2),
+  # so subscribe to the formatter shared-platform deploys there.
+  build_notifier_lambda_function_arn = "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.build_notifier_lambda_function_name}"
 }
 
 # --- ACM certificate (us-east-1, required by CloudFront) -----------------------
@@ -109,6 +115,10 @@ module "codebuild_role" {
   # The build manages its own IAM role (named with the project prefix).
   prefix_managed_services = ["iam_role"]
 
+  # The build-notifications subscription adds an EventBridge invoke permission
+  # on the shared formatter Lambda, which isn't covered by the prefix grants.
+  lambda_permission_function_arns = [local.build_notifier_lambda_function_arn]
+
   additional_policy_statements = [
     # Terraform manages the bucket + CloudFront distribution; the build syncs
     # objects to S3 and creates a CloudFront invalidation after each deploy.
@@ -155,4 +165,9 @@ module "codebuild_project" {
     { type = "EVENT", pattern = "PUSH" },
     { type = "HEAD_REF", pattern = "refs/heads/${var.codebuild_webhook_branch}" },
   ]]
+
+  # Email build success/failure notifications via the shared-platform notifier.
+  build_notifier_lambda_function_arn = local.build_notifier_lambda_function_arn
+  build_notifier_app_url             = "https://${local.site_domain}"
+  build_notifier_github_repo_url     = trimsuffix(var.codebuild_source_location, ".git")
 }
