@@ -105,3 +105,9 @@ variable "codebuild_webhook_branch" {
   type        = string
   default     = "master"
 }
+
+variable "build_notifier_lambda_function_name" {
+  description = "Name of the shared-platform build notification formatter Lambda in this project's region."
+  type        = string
+  default     = "shared-platform-ap-southeast-2-build-notification-formatter"
+}
