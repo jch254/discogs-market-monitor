@@ -29,6 +29,14 @@ interface RetryOptions {
   // can widen this (e.g. the sell-page scraper also retries Cloudflare blocks
   // after rotating its session). Non-matching errors propagate immediately.
   shouldRetry?: (error: any) => boolean;
+  // Observability hook invoked just before each backoff sleep, e.g. so the
+  // scraper can emit a structured scraper_retry_scheduled event.
+  onRetryScheduled?: (info: {
+    attempt: number;
+    maxRetries: number;
+    delayMs: number;
+    error: any;
+  }) => void;
 }
 
 // Retries `fn` when it fails with a retryable error (per `shouldRetry`), using
@@ -41,6 +49,7 @@ export const withRetry = async <T>(
     maxDelayMs = 30000,
     label = 'discogs request',
     shouldRetry = isRateLimitError,
+    onRetryScheduled,
   }: RetryOptions = {},
 ): Promise<T> => {
   let attempt = 0;
@@ -53,11 +62,16 @@ export const withRetry = async <T>(
         throw error;
       }
 
+      // Jitter is bounded: delay never exceeds 1.5 * maxDelayMs.
       const backoff = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
       const jitter = Math.random() * backoff * 0.5;
       const delayMs = Math.round(backoff + jitter);
 
       attempt += 1;
+
+      if (onRetryScheduled) {
+        onRetryScheduled({ attempt, maxRetries, delayMs, error });
+      }
 
       console.log('RETRYABLE DISCOGS ERROR, BACKING OFF BEFORE RETRY', {
         label,

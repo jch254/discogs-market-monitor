@@ -46,6 +46,18 @@ provider:
     SENDER_EMAIL: ${ssm:/discogs-market-monitor/sender_email, env:SENDER_EMAIL, ''}
     # The scheduled dispatcher and the signup API both start workflow executions.
     STATE_MACHINE_ARN: arn:aws:states:${aws:region}:${aws:accountId}:stateMachine:${self:service}-market-monitor
+    # Sell-page scraper tuning (see src/scraperConfig.ts for validation and
+    # bounds; invalid values fall back to these defaults at runtime). Resolved
+    # from the deployer's environment so they can be tuned without a code
+    # change.
+    SCRAPER_REQUEST_TIMEOUT_MS: ${env:SCRAPER_REQUEST_TIMEOUT_MS, '25000'}
+    SCRAPER_MAX_ATTEMPTS: ${env:SCRAPER_MAX_ATTEMPTS, '4'}
+    SCRAPER_CIRCUIT_FAILURE_THRESHOLD: ${env:SCRAPER_CIRCUIT_FAILURE_THRESHOLD, '3'}
+    SCRAPER_CIRCUIT_OPEN_MS: ${env:SCRAPER_CIRCUIT_OPEN_MS, '120000'}
+    # Comma-separated profile names (e.g. safari_16_0,firefox_117). Empty means
+    # "use the verified defaults in scraperConfig.ts". The default can't be
+    # inlined here: Serverless' placeholder parser splits on the comma.
+    SCRAPER_PROFILES: ${env:SCRAPER_PROFILES, ''}
   iam:
     role:
       statements:
@@ -140,11 +152,15 @@ stepFunctions:
             # Unit of work is one (userId, releaseId). Low concurrency keeps the
             # shared Discogs IP rate-limit-safe; per-release 429 retry absorbs bursts.
             MaxConcurrency: 2
-            # A release that Cloudflare refuses to serve even after session
-            # rotation and Step Functions retries should cost one release, not
-            # the whole run: sendDigest reads the un-notified DynamoDB ledger
-            # (not the Map results), so it still emails everything that
-            # succeeded.
+            # SendDigest reads un-notified listings from DynamoDB rather than
+            # Map output. A failed release check should delay that release
+            # until a future run, not block the digest for listings discovered
+            # by successful release checks. So a release that Cloudflare
+            # refuses to serve even after session rotation and Step Functions
+            # retries costs one release, not the whole run - while a run where
+            # more than 15% of releases fail still fails loudly. (Fixed value:
+            # serverless-step-functions compiles this at package time, so it is
+            # not runtime-env-configurable.)
             ToleratedFailurePercentage: 15
             ItemProcessor:
               ProcessorConfig:

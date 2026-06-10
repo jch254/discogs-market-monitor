@@ -22,12 +22,24 @@ phases:
   install:
     commands:
       # Workaround until CodeBuild/CodePipeline retains file permissions
-      - find ./infrastructure -name "*.bash" -exec chmod +x {} \;
+      - find ./infrastructure ./scripts -name "*.bash" -exec chmod +x {} \;
       - ./infrastructure/install.bash
+
+  pre_build:
+    commands:
+      # Quality gates: a failing typecheck or test suite blocks the deploy.
+      # (The live Discogs smoke test is excluded - it only runs with
+      # LIVE_SMOKE=1.)
+      - pnpm run typecheck
+      - pnpm run test
 
   build:
     commands:
       - ./infrastructure/deploy-infrastructure.bash
+      # Packages and asserts the artifact contains the koffi linux_x64 native
+      # binary + node-tls-client deps, and that the state machine keeps its
+      # tolerated-failure/retry config, before deploying for real.
+      - ./scripts/verify-package.bash
       - ./infrastructure/deploy-serverless.bash
 
 cache:
