@@ -10,6 +10,10 @@ const {
   title = 'Discogs Wantlist Marketplace Monitor',
   description = 'Get a digest email when records from your Discogs wantlist appear in the marketplace shipping from the countries you choose.',
 } = Astro.props;
+
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+// Link previews want an absolute address for the image (public/og.png).
+const ogImage = new URL('/og.png', Astro.site).href;
 ---
 
 <!doctype html>
@@ -26,6 +30,21 @@ const {
       rel="stylesheet"
     />
     <title>{title}</title>
+
+    <!-- Link previews -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Wantlist Monitor" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Wantlist Monitor. Catch your grails the moment they list." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
   </head>
   <body class="min-h-screen font-sans">
     <slot />
